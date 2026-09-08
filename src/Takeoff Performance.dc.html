@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/tokens/colors.css">
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/tokens/typography.css">
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/tokens/radius.css">
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/tokens/elevation.css">
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/tokens/motion.css">
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/tokens/base.css">
+<link rel="stylesheet" href="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/styles.css">
+<script src="_ds/perfgraph-design-system-f6153185-fe5c-49c2-9d35-91c5f4f8f50f/_ds_bundle.js"></script>
+<script src="airports-africa.js"></script>
+<script src="data/afm-interp.js"></script>
+<script src="data/fig5-12-tora.js"></script>
+<script src="data/fig5-13-tor-carpet.js"></script>
+<script src="data/fig5-14-tor-corr.js"></script>
+<script src="data/fig5-15-toda.js"></script>
+<script src="data/fig5-16-tod-carpet.js"></script>
+<script src="data/fig5-19-asd-carpet.js"></script>
+<script src="data/fig5-17-tod-corr.js"></script>
+<script src="data/fig5-20-asd.js"></script>
+<script src="data/fig5-18-asda.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PerfGraph">
+<meta name="theme-color" content="#0a0e13">
+<meta name="format-detection" content="telephone=no">
+<style>html,body{margin:0;height:100%;background:#0a0e13;-webkit-text-size-adjust:100%;overscroll-behavior:none}a{color:var(--accent);text-decoration:none}a:hover{color:var(--mint-400)}input,select,button{font-size:16px}
+/* DataRow label/hint space contest. The design-system DataRow renders the label and its
+   hint as sibling spans in a flex row, both shrinkable, so a long hint wins the space and
+   the LABEL is what ellipsises — "Best V1" rendered as "Best V…" even in its already
+   shortened form, which no amount of trimming the label text can fix. The label is the
+   part a pilot must read, so it is pinned and the hint yields instead. Written here
+   because these spans are interior to a third-party component and carry no class or data
+   attribute, so they cannot be reached with an inline style. */
+span[style*="text-overflow: ellipsis"]{flex:none !important}
+/* …and the hint WRAPS rather than truncating. Pinning the label (above) made the hint
+   the thing that yielded, which was right for short hints but wrong for the V1 rows,
+   whose hints are explanatory sentences — "RTOW would be 6 493 kg at V1 84.0 instead of
+   6 081 kg" is useless cut to "RTOW would be 6 49…". Wrapping costs a little row height
+   and loses nothing. */
+span[style*="text-overflow: ellipsis"]+span{min-width:0;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="display:flex;height:100vh;overflow:hidden;background:var(--bg-page);color:var(--text-body);font-family:var(--font-core)">
+
+<nav style="width:var(--rail-w);flex:0 0 auto;background:var(--ink-850);border-right:1px solid var(--border-hairline);display:{{ railDisplay }};flex-direction:column;align-items:center;padding:var(--space-4) 0;gap:var(--space-3)">
+<div style="width:30px;height:30px;display:grid;place-items:center;background:var(--mint-500);border-radius:var(--radius-md);font:var(--weight-bold) 15px/1 var(--font-display);color:var(--ink-1000);margin-bottom:var(--space-4)">PG</div>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="calculator" label="Take-off" selected="{{ isCalcRail }}" onClick="{{ goCalc }}" hint-size="32px,32px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="chart-line" label="Charts" selected="{{ isChartRail }}" onClick="{{ goCharts }}" hint-size="32px,32px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="ruler" label="Chart reads" selected="{{ isReads }}" onClick="{{ goReads }}" hint-size="32px,32px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="plane" label="Aircraft limits" selected="{{ isFleet }}" onClick="{{ goFleet }}" hint-size="32px,32px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="clock" label="History" selected="{{ isHistory }}" onClick="{{ goHistory }}" hint-size="32px,32px"></x-import>
+<div style="flex:1"></div>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="settings" label="{{ themeLabel }}" selected="{{ isLight }}" onClick="{{ toggleTheme }}" hint-size="32px,32px"></x-import>
+</nav>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+<header style="height:var(--topbar-h);flex:0 0 auto;display:flex;align-items:center;gap:{{ topbarGap }};padding:0 {{ topbarPad }};background:var(--surface-raised);border-bottom:1px solid var(--border-hairline)">
+<span style="font:var(--weight-bold) var(--text-xl)/1 var(--font-display);letter-spacing:-0.01em;color:var(--white)">Perf<span style="color:var(--mint-500)">Graph</span></span>
+<span style="width:1px;height:20px;background:var(--border-hairline)"></span>
+<div style="display:{{ chipDisplay }};align-items:center;gap:var(--space-3);height:30px;padding:0 var(--space-4);background:var(--surface-field);border:1px solid var(--border-field);border-radius:var(--radius-control);color:var(--text-body);font:var(--type-mono-sm)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="plane" size="{{ 13 }}" color="var(--accent)" hint-size="13px,13px"></x-import>
+L 410 UVP-E20 · H75-200
+</div>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="caution" shape="square" size="sm" hint-size="auto,18px">{{ refBadge }}</x-import>
+<div style="flex:1"></div>
+<span style="font:var(--type-mono-sm);color:var(--text-faint);display:{{ chipDisplay }}">{{ stamp }}</span>
+<sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="clock" label="History" selected="{{ isHistory }}" onClick="{{ goHistoryTop }}" hint-size="32px,32px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="settings" label="{{ themeLabel }}" selected="{{ isLight }}" onClick="{{ toggleTheme }}" hint-size="32px,32px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.IconButton" name="download" label="Export" onClick="{{ exportCsv }}" hint-size="32px,32px"></x-import>
+</sc-if>
+<sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Button" variant="ghost" size="sm" iconLeft="download" onClick="{{ exportCsv }}" hint-size="auto,26px">Export</x-import>
+</sc-if>
+</header>
+
+<div style="flex:1;min-height:0;display:flex;overflow:{{ innerOverflow }}">
+
+<sc-if value="{{ isCalcArea }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-width:0;display:flex;flex-direction:{{ innerDir }};overflow:hidden">
+
+<sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
+<aside style="width:{{ panelW }};flex:{{ panelFlex }};background:var(--surface-card);border-right:{{ panelBorder }};display:flex;flex-direction:column;overflow:auto;-webkit-overflow-scrolling:touch">
+<div style="padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-6)">
+
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font:var(--type-label);letter-spacing:var(--tracking-placard);text-transform:uppercase;color:var(--text-muted)">Conditions</span>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="{{ dirtyTone }}" dot="{{ true }}" hint-size="auto,18px">{{ dirtyLabel }}</x-import>
+</div>
+
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.SegmentedControl" size="{{ ctlSize }}" fullWidth="{{ true }}" options="{{ modeOptions }}" value="{{ mode }}" onValueChange="{{ setMode }}" hint-size="100%,32px"></x-import>
+
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="ICAO designator" hint="{{ icaoHint }}" layout="inline" hint-size="100%,26px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Input" value="{{ icao }}" onChange="{{ setIcao }}" size="{{ ctlSize }}" mono="{{ true }}" icon="map-pin" placeholder="FALA" hint-size="100%,26px"></x-import>
+</x-import>
+<div style="display:flex;align-items:center;gap:var(--space-3);margin-top:calc(var(--space-4) * -1)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="{{ aptTone }}" size="sm" hint-size="auto,18px">{{ aptBadge }}</x-import>
+<span style="font:var(--type-mono-sm);color:var(--text-muted);line-height:1.4;text-wrap:pretty">{{ aptTitle }}</span>
+</div>
+<sc-if value="{{ hasGap }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:flex-start;gap:var(--space-3);margin-top:calc(var(--space-4) * -1)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="caution" size="sm" hint-size="auto,18px">Partial</x-import>
+<span style="font:var(--type-mono-sm);color:var(--text-muted);line-height:1.4;text-wrap:pretty">{{ gapNote }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ hasSuggestions }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:calc(var(--space-4) * -1)">
+<sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="3">
+<button type="button" onClick="{{ s.pick }}" style="display:flex;align-items:baseline;gap:var(--space-4);width:100%;padding:var(--space-3) var(--space-4);background:var(--surface-field);border:1px solid var(--border-hairline);border-radius:var(--radius-control);color:var(--text-body);font:var(--type-mono-sm);text-align:left;cursor:pointer;transition:var(--transition-control)" style-hover="background:var(--surface-hover)">
+<span style="color:var(--accent);flex:0 0 auto">{{ s.icao }}</span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.name }}</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ hasEnds }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="Runway" hint="Published physical length" layout="inline" hint-size="100%,26px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Select" size="{{ ctlSize }}" mono="{{ true }}" options="{{ endOptions }}" value="{{ rwyEnd }}" onValueChange="{{ setRwyEnd }}" hint-size="100%,26px"></x-import>
+</x-import>
+</sc-if>
+
+<sc-for list="{{ atmoFields }}" as="f" hint-placeholder-count="3">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="{{ f.label }}" hint="{{ f.hint }}" layout="inline" hint-size="100%,26px">
+<div style="display:flex;align-items:stretch;gap:var(--space-3)">
+<button type="button" aria-label="Decrease" disabled="{{ f.disabled }}" onClick="{{ f.down }}" style="flex:0 0 auto;width:{{ stepW }};height:{{ fieldH }};display:grid;place-items:center;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:var(--radius-control);color:var(--text-body);cursor:{{ f.cursor }};opacity:{{ f.opacity }};transition:var(--transition-control)" style-hover="background:var(--surface-hover)" style-active="background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="minus" size="{{ stepIcon }}" hint-size="16px,16px"></x-import>
+</button>
+<div style="flex:1;min-width:0">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.NumberField" value="{{ f.value }}" onValueChange="{{ f.set }}" unit="{{ f.unit }}" step="{{ f.step }}" min="{{ f.min }}" max="{{ f.max }}" size="{{ ctlSize }}" steppers="{{ false }}" align="center" disabled="{{ f.disabled }}" invalid="{{ f.invalid }}" hint-size="100%,26px"></x-import>
+</div>
+<button type="button" aria-label="Increase" disabled="{{ f.disabled }}" onClick="{{ f.up }}" style="flex:0 0 auto;width:{{ stepW }};height:{{ fieldH }};display:grid;place-items:center;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:var(--radius-control);color:var(--text-body);cursor:{{ f.cursor }};opacity:{{ f.opacity }};transition:var(--transition-control)" style-hover="background:var(--surface-hover)" style-active="background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="plus" size="{{ stepIcon }}" hint-size="16px,16px"></x-import>
+</button>
+</div>
+</x-import>
+</sc-for>
+
+<div style="height:1px;background:var(--border-hairline)"></div>
+<span style="font:var(--type-label);letter-spacing:var(--tracking-placard);text-transform:uppercase;color:var(--text-muted)">Runway</span>
+
+<sc-for list="{{ rwyFields }}" as="f" hint-placeholder-count="5">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="{{ f.label }}" hint="{{ f.hint }}" layout="inline" hint-size="100%,26px">
+<div style="display:flex;align-items:stretch;gap:var(--space-3)">
+<button type="button" aria-label="Decrease" disabled="{{ f.disabled }}" onClick="{{ f.down }}" style="flex:0 0 auto;width:{{ stepW }};height:{{ fieldH }};display:grid;place-items:center;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:var(--radius-control);color:var(--text-body);cursor:{{ f.cursor }};opacity:{{ f.opacity }};transition:var(--transition-control)" style-hover="background:var(--surface-hover)" style-active="background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="minus" size="{{ stepIcon }}" hint-size="16px,16px"></x-import>
+</button>
+<div style="flex:1;min-width:0">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.NumberField" value="{{ f.value }}" onValueChange="{{ f.set }}" unit="{{ f.unit }}" step="{{ f.step }}" min="{{ f.min }}" max="{{ f.max }}" size="{{ ctlSize }}" steppers="{{ false }}" align="center" disabled="{{ f.disabled }}" invalid="{{ f.invalid }}" hint-size="100%,26px"></x-import>
+</div>
+<button type="button" aria-label="Increase" disabled="{{ f.disabled }}" onClick="{{ f.up }}" style="flex:0 0 auto;width:{{ stepW }};height:{{ fieldH }};display:grid;place-items:center;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:var(--radius-control);color:var(--text-body);cursor:{{ f.cursor }};opacity:{{ f.opacity }};transition:var(--transition-control)" style-hover="background:var(--surface-hover)" style-active="background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="plus" size="{{ stepIcon }}" hint-size="16px,16px"></x-import>
+</button>
+</div>
+</x-import>
+</sc-for>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="Surface" hint="{{ surfaceHint }}" layout="inline" hint-size="100%,26px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Select" size="{{ ctlSize }}" options="{{ surfaceOptions }}" value="{{ surface }}" onValueChange="{{ setSurface }}" hint-size="100%,26px"></x-import>
+</x-import>
+<sc-for list="{{ windFields }}" as="f" hint-placeholder-count="2">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="{{ f.label }}" hint="{{ f.hint }}" layout="inline" hint-size="100%,26px">
+<div style="display:flex;align-items:stretch;gap:var(--space-3)">
+<button type="button" aria-label="Decrease" disabled="{{ f.disabled }}" onClick="{{ f.down }}" style="flex:0 0 auto;width:{{ stepW }};height:{{ fieldH }};display:grid;place-items:center;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:var(--radius-control);color:var(--text-body);cursor:{{ f.cursor }};opacity:{{ f.opacity }};transition:var(--transition-control)" style-hover="background:var(--surface-hover)" style-active="background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="minus" size="{{ stepIcon }}" hint-size="16px,16px"></x-import>
+</button>
+<div style="flex:1;min-width:0">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.NumberField" value="{{ f.value }}" onValueChange="{{ f.set }}" unit="{{ f.unit }}" step="{{ f.step }}" min="{{ f.min }}" max="{{ f.max }}" size="{{ ctlSize }}" steppers="{{ false }}" align="center" disabled="{{ f.disabled }}" invalid="{{ f.invalid }}" hint-size="100%,26px"></x-import>
+</div>
+<button type="button" aria-label="Increase" disabled="{{ f.disabled }}" onClick="{{ f.up }}" style="flex:0 0 auto;width:{{ stepW }};height:{{ fieldH }};display:grid;place-items:center;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:var(--radius-control);color:var(--text-body);cursor:{{ f.cursor }};opacity:{{ f.opacity }};transition:var(--transition-control)" style-hover="background:var(--surface-hover)" style-active="background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="plus" size="{{ stepIcon }}" hint-size="16px,16px"></x-import>
+</button>
+</div>
+</x-import>
+</sc-for>
+
+<div style="height:1px;background:var(--border-hairline)"></div>
+<span style="font:var(--type-label);letter-spacing:var(--tracking-placard);text-transform:uppercase;color:var(--text-muted)">Configuration</span>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.SegmentedControl" size="{{ ctlSize }}" fullWidth="{{ true }}" options="{{ flapOptions }}" value="{{ flap }}" onValueChange="{{ setFlap }}" hint-size="100%,32px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="V1 basis" hint="{{ v1ModeHint }}" layout="stack" hint-size="100%,52px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.SegmentedControl" size="{{ ctlSize }}" fullWidth="{{ true }}" options="{{ v1ModeOptions }}" value="{{ v1Mode }}" onValueChange="{{ setV1Mode }}" hint-size="100%,32px"></x-import>
+</x-import>
+<sc-if value="{{ isManualV1 }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="Manual V1" hint="{{ v1ManualHint }}" layout="inline" hint-size="100%,26px">
+<div style="display:flex;align-items:stretch;gap:var(--space-3)">
+<sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Button" variant="secondary" size="touch" iconLeft="minus" onClick="{{ v1ManualDown }}" hint-size="48px,48px"></x-import>
+</sc-if>
+<div style="flex:1;min-width:0">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.NumberField" value="{{ v1Manual }}" onValueChange="{{ setV1Manual }}" unit="KIAS" step="{{ 0.5 }}" min="{{ 70 }}" max="{{ 81 }}" size="{{ ctlSize }}" steppers="{{ isWide }}" align="center" hint-size="100%,26px"></x-import>
+</div>
+<sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Button" variant="secondary" size="touch" iconLeft="plus" onClick="{{ v1ManualUp }}" hint-size="48px,48px"></x-import>
+</sc-if>
+</div>
+</x-import>
+</sc-if>
+<sc-for list="{{ cfgFields }}" as="f" hint-placeholder-count="1">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="{{ f.label }}" hint="{{ f.hint }}" layout="inline" hint-size="100%,26px">
+<div style="display:flex;align-items:stretch;gap:var(--space-3)">
+<button type="button" aria-label="Decrease" disabled="{{ f.disabled }}" onClick="{{ f.down }}" style="flex:0 0 auto;width:{{ stepW }};height:{{ fieldH }};display:grid;place-items:center;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:var(--radius-control);color:var(--text-body);cursor:{{ f.cursor }};opacity:{{ f.opacity }};transition:var(--transition-control)" style-hover="background:var(--surface-hover)" style-active="background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="minus" size="{{ stepIcon }}" hint-size="16px,16px"></x-import>
+</button>
+<div style="flex:1;min-width:0">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.NumberField" value="{{ f.value }}" onValueChange="{{ f.set }}" unit="{{ f.unit }}" step="{{ f.step }}" min="{{ f.min }}" max="{{ f.max }}" size="{{ ctlSize }}" steppers="{{ false }}" align="center" disabled="{{ f.disabled }}" invalid="{{ f.invalid }}" hint-size="100%,26px"></x-import>
+</div>
+<button type="button" aria-label="Increase" disabled="{{ f.disabled }}" onClick="{{ f.up }}" style="flex:0 0 auto;width:{{ stepW }};height:{{ fieldH }};display:grid;place-items:center;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:var(--radius-control);color:var(--text-body);cursor:{{ f.cursor }};opacity:{{ f.opacity }};transition:var(--transition-control)" style-hover="background:var(--surface-hover)" style-active="background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="plus" size="{{ stepIcon }}" hint-size="16px,16px"></x-import>
+</button>
+</div>
+</x-import>
+</sc-for>
+</div>
+
+<div style="margin-top:auto;position:sticky;bottom:0;padding:var(--space-5) var(--space-6);border-top:1px solid var(--border-hairline);background:var(--surface-raised);display:flex;flex-direction:column;gap:var(--space-4)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" divider="{{ false }}" label="Pressure altitude" value="{{ paText }}" unit="ft" hint-size="100%,20px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" divider="{{ false }}" label="Density altitude" value="{{ daText }}" unit="ft" hint-size="100%,20px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" divider="{{ false }}" label="ISA deviation" value="{{ devText }}" unit="°C" hint-size="100%,20px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Button" fullWidth="{{ true }}" size="{{ btnSize }}" iconLeft="calculator" onClick="{{ compute }}" hint-size="100%,40px">Compute</x-import>
+</div>
+</aside>
+</sc-if>
+
+<sc-if value="{{ showResults }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-width:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:{{ contentPad }};display:flex;flex-direction:column;gap:var(--space-6);max-width:var(--content-max)">
+
+<div style="display:flex;flex-wrap:wrap;gap:var(--space-5);align-items:flex-end;justify-content:space-between">
+<div>
+<div style="font:var(--type-title);color:var(--text-heading)">Take-off performance</div>
+<div style="font:var(--type-mono-sm);color:var(--text-faint);margin-top:4px">{{ conditionLine }}</div>
+</div>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Tabs" items="{{ tabItems }}" value="{{ tab }}" onChange="{{ setTab }}" hint-size="auto,30px"></x-import>
+</div>
+
+<sc-if value="{{ isFlap0 }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Alert" tone="limit" title="Flaps 0° charts not read" hint-size="100%,64px">The chart reads record covers wing flaps 18° only. Figures 5-22 to 5-30 of the supplement and the flaps 0° WAT and climb charts of the base AFM have not been digitised, so no weight is computed for this configuration. Select flaps 18°, or read the flaps 0° charts first.</x-import>
+</sc-if>
+
+<sc-if value="{{ hasMissing }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Alert" tone="limit" title="{{ missingTitle }}" hint-size="100%,64px">{{ missingNote }}</x-import>
+</sc-if>
+
+<sc-if value="{{ isReady }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:var(--space-6)">
+
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Alert" tone="{{ verdictTone }}" title="{{ verdictTitle }}" hint-size="100%,64px">{{ verdictBody }}
+<sc-if value="{{ hasPartial }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:flex-start;gap:var(--space-4);margin-top:var(--space-4)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="caution" size="sm" hint-size="auto,18px">Partial record</x-import>
+<span style="font:var(--type-mono-sm);color:var(--text-muted);line-height:1.5">{{ partialNote }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ hasSurfNote }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:flex-start;gap:var(--space-4);margin-top:var(--space-4)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="caution" size="sm" hint-size="auto,18px">Surface</x-import>
+<span style="font:var(--type-mono-sm);color:var(--text-muted);line-height:1.5">{{ surfNote }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ hasExt }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:flex-start;gap:var(--space-4);margin-top:var(--space-4)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="caution" size="sm" hint-size="auto,18px">Extrapolated</x-import>
+<span style="font:var(--type-mono-sm);color:var(--text-muted);line-height:1.5">{{ extNote }}</span>
+</div>
+</sc-if>
+</x-import>
+
+<sc-if value="{{ isTakeoff }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:var(--space-6)">
+
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Regulated take-off weight" subtitle="{{ rtowSubtitle }}" hint-size="100%,300px">
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-7) var(--space-9)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.StatBlock" size="lg" glow="{{ true }}" label="{{ headlineLabel }}" value="{{ headlineValue }}" unit="kg" note="{{ headlineNote }}" status="{{ headlineStatus }}" hint-size="auto,80px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.StatBlock" label="{{ fieldLimitLabel }}" value="{{ fieldText }}" unit="kg" note="{{ fieldNote }}" status="{{ fieldStatus }}" hint-size="auto,64px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.StatBlock" label="Limit · OEI 2nd segment" value="{{ climbText }}" unit="kg" note="{{ climbNote }}" status="{{ climbStatus }}" hint-size="auto,64px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.StatBlock" size="sm" label="Limit · structural" value="6 600" unit="kg" note="{{ mtowNote }}" status="{{ mtowStatus }}" hint-size="auto,52px"></x-import>
+</div>
+<div style="margin-top:var(--space-7);display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-6)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.MarginMeter" label="TODR vs TODAcor" available="{{ todaCorV }}" required="{{ todr }}" hint-size="100%,56px"></x-import>
+<sc-if value="{{ hasAsdMeter }}" hint-placeholder-val="{{ true }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.MarginMeter" label="ASDR vs ASDAcor" available="{{ asdaCorV }}" required="{{ asdrValue }}" hint-size="100%,56px"></x-import>
+</sc-if>
+<div style="display:flex;flex-direction:column;justify-content:center">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" label="{{ gradAtWLabel }}" value="{{ gradAtWeightText }}" unit="%" status="{{ gradStatus }}" hint="{{ gradVsReqHint }}" divider="{{ false }}" hint-size="100%,24px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" label="Net gradient at 6 600 kg" value="{{ g6600Text }}" unit="%" status="{{ g6600Status }}" hint="{{ g6600Hint }}" divider="{{ false }}" hint-size="100%,24px"></x-import>
+</div>
+</div>
+</x-import>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--space-6)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="V speeds" subtitle="{{ vSubtitle }}" padding="sm" hint-size="100%,240px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.VSpeedGrid" columns="{{ 2 }}" speeds="{{ vspeeds }}" hint-size="100%,230px"></x-import>
+<div style="margin-top:var(--space-5);display:flex;flex-direction:column">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" label="{{ v1EffLabel }}" value="{{ vCorrText }}" hint="{{ v1Note }}" status="{{ v1Status }}" hint-size="100%,24px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" label="{{ bestV1Label }}" value="{{ balV1Text }}" unit="KIAS" hint="{{ balV1Hint }}" hint-size="100%,24px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" label="{{ penaltyLabel }}" value="{{ penaltyText }}" unit="kg" hint="{{ penaltyHint }}" status="{{ penaltyStatus }}" divider="{{ false }}" hint-size="100%,24px"></x-import>
+</div>
+</x-import>
+
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Distances" subtitle="{{ distSubtitle }}" padding="sm" hint-size="100%,240px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Pressure altitude" value="{{ paText }}" unit="ft" hint="{{ paHint }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Density altitude" value="{{ daText }}" unit="ft" hint="{{ daHint }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="TODR" value="{{ todrText }}" unit="m" hint="{{ todaCorHint }}" status="{{ todStatus }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="ASDR" value="{{ asdrText }}" unit="m" hint="{{ asdrHint }}" status="{{ asdrStatus }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="TORR" value="{{ torrText }}" unit="m" hint="{{ torrHint }}" status="{{ torrStatus }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="TOR at 5 400 kg" value="{{ tor5400Text }}" unit="m" hint="{{ tor5400Hint }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="TOD at 5 400 kg" value="{{ tod5400Text }}" unit="m" hint="{{ tod5400Hint }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="ASD at 5 400 kg" value="{{ asd5400Text }}" unit="m" hint="{{ asd5400Hint }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Weight correction" value="{{ wCorrText }}" hint="Supplement Fig. 5-17 left · ref 5 400 kg" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="V1 correction" value="{{ vCorrText }}" hint="Supplement Fig. 5-17 right · ref 84 KIAS" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Slope correction" value="{{ slopeCText }}" hint="{{ slopeAppliedText }} · supplement Fig. 5-18 left" status="{{ slopeAppliedStatus }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Wind correction" value="{{ windCText }}" hint="{{ windAppliedText }} · supplement Fig. 5-18 right" status="{{ windAppliedStatus }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Surface coefficient" value="{{ surfaceCoefText }}" hint="{{ surfaceCoefHint }}" status="{{ surfaceCoefStatus }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="TODA corrected" value="{{ todaCorText }}" unit="m" hint="{{ todaCorHint2 }}" divider="{{ false }}" hint-size="100%,28px"></x-import>
+</x-import>
+
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Wind" subtitle="{{ windSubtitle }}" padding="sm" hint-size="100%,240px">
+<div style="display:flex;flex-direction:column;gap:var(--space-5)">
+<div style="position:relative;width:112px;height:112px;align-self:center;flex:0 0 auto;border:1px solid var(--border-hairline);border-radius:50%;background:var(--ink-1000)">
+<span style="position:absolute;top:5px;left:50%;transform:translateX(-50%);font:var(--type-label);letter-spacing:var(--tracking-placard);color:var(--text-faint)">RWY {{ rwyLabel }}</span>
+<div style="position:absolute;left:50%;top:20px;bottom:12px;width:5px;margin-left:-2.5px;background:var(--slate-500);border-radius:2px"></div>
+<div style="position:absolute;inset:0;transform:{{ windTransform }}">
+<div style="position:absolute;left:50%;top:8px;width:2px;height:38px;margin-left:-1px;background:{{ windColor }}"></div>
+<div style="position:absolute;left:50%;top:44px;margin-left:-5px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:10px solid {{ windColor }}"></div>
+</div>
+<div style="position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--slate-300)"></div>
+</div>
+<div>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" label="{{ windHeadLabel }}" value="{{ windHeadText }}" hint-size="100%,24px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" label="Crosswind" value="{{ windXText }}" status="{{ windXStatus }}" hint-size="100%,24px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" dense="{{ true }}" label="Effect on TODA" value="{{ windAppliedText }}" status="{{ windAppliedStatus }}" divider="{{ false }}" hint-size="100%,24px"></x-import>
+</div>
+</div>
+</x-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isClimb }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:var(--space-6)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="OEI 2nd segment · net gradient" subtitle="Base AFM Fig. 5-17 · still air · flaps 18°" hint-size="100%,400px">
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-7) var(--space-9)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.StatBlock" size="lg" glow="{{ true }}" label="Climb-limited weight" value="{{ climbText }}" unit="kg" note="{{ climbNote }}" status="{{ climbStatus }}" hint-size="auto,80px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.StatBlock" size="sm" label="{{ gradAtWLabel }}" value="{{ gradAtWeightText }}" unit="%" status="{{ gradStatus }}" note="{{ gradNote }}" hint-size="auto,52px"></x-import>
+</div>
+<div style="margin-top:var(--space-6);display:flex;flex-direction:column">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Net gradient at 6 600 kg" value="{{ g6600Text }}" unit="%" hint="{{ g6600Hint }}" status="{{ g6600Status }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Mass effect" value="{{ kText }}" unit="%/1 000 kg" hint="{{ kHint }}" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Density altitude" value="{{ daText }}" unit="ft" hint="{{ daHint }}" hint-size="100%,28px"></x-import>
+</div>
+<div style="margin-top:var(--space-6);padding-top:var(--space-5);border-top:1px solid var(--border-hairline)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.FieldRow" label="Required net gradient" hint="Operator policy · drives the climb limit" layout="inline" hint-size="100%,26px">
+<div style="display:flex;align-items:stretch;gap:var(--space-3)">
+<sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Button" variant="secondary" size="touch" iconLeft="minus" onClick="{{ reqNetDownLive }}" hint-size="48px,48px"></x-import>
+</sc-if>
+<div style="flex:1;min-width:0">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.NumberField" value="{{ reqNet }}" onValueChange="{{ setReqNetLive }}" unit="%" step="{{ 0.05 }}" min="{{ -2 }}" max="{{ 6 }}" size="{{ ctlSize }}" steppers="{{ isWide }}" hint-size="100%,26px"></x-import>
+</div>
+<sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Button" variant="secondary" size="touch" iconLeft="plus" onClick="{{ reqNetUpLive }}" hint-size="48px,48px"></x-import>
+</sc-if>
+</div>
+</x-import>
+</div>
+</x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Net gradient vs weight" subtitle="{{ gradSubtitle }}" padding="sm" hint-size="100%,400px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.LineChart" height="{{ 300 }}" yLabel="Net gradient %" xLabel="Weight kg" gridStyle="both" domainX="{{ weightDomain }}" domainY="{{ gradDomain }}" marker="{{ gradMarker }}" series="{{ gradSeries }}" hint-size="100%,300px"></x-import>
+</x-import>
+</div>
+</sc-if>
+
+<sc-if value="{{ isChart }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:var(--space-6)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="RTOW vs outside air temperature" subtitle="{{ curveSubtitle }}" hint-size="100%,400px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.LineChart" height="{{ 310 }}" yLabel="RTOW kg" xLabel="OAT °C" domainX="{{ oatDomain }}" domainY="{{ weightDomain }}" marker="{{ rtowMarker }}" series="{{ rtowSeries }}" hint-size="100%,310px"></x-import>
+</x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="TOD required vs pressure altitude" subtitle="At 5 400 kg reference weight · supplement Fig. 5-16 reads" hint-size="100%,380px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.LineChart" height="{{ 290 }}" yLabel="TOD required m" xLabel="Pressure altitude ft" gridStyle="both" domainX="{{ paDomain }}" domainY="{{ todDomain }}" marker="{{ todMarker }}" series="{{ todSeries }}" hint-size="100%,290px"></x-import>
+</x-import>
+</div>
+</sc-if>
+
+</div>
+</sc-if>
+
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Alert" tone="caution" title="Unapproved planning aid" hint-size="100%,72px">Flaps 18° only. Not a substitute for the approved Aircraft Flight Manual — verify every figure against the base AFM and its H75-200 supplement before any operational use.</x-import>
+
+</div>
+</sc-if>
+
+</div>
+</sc-if>
+
+<sc-if value="{{ isReads }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-width:0;overflow:auto;padding:{{ contentPad }};display:flex;flex-direction:column;gap:var(--space-6);max-width:var(--content-max)">
+<div>
+<div style="font:var(--type-title);color:var(--text-heading)">Chart reads record</div>
+<div style="font:var(--type-mono-sm);color:var(--text-faint);margin-top:4px">Flaps 18° · supplement Figs. 5-12 to 5-20 · every number the calculator uses</div>
+</div>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Net 2nd-segment gradient at 6 600 kg" subtitle="{{ gradReadSubtitle }}" padding="none" hint-size="100%,280px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataTable" dense="{{ true }}" columns="{{ gradReadColumns }}" rows="{{ gradReadRows }}" hint-size="100%,190px"></x-import>
+<div style="display:flex;align-items:flex-start;gap:var(--space-4);padding:var(--space-5) var(--space-6);border-top:1px solid var(--border-hairline);background:var(--surface-sunken)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="caution" size="sm" hint-size="auto,18px">Derived</x-import>
+<span style="font:var(--type-mono-sm);color:var(--text-muted);line-height:1.5">The ISA−20 column is not read from Fig. 5-17. Sea level and 3 000 m are back-calculated from the 5 000 kg mass reads using the mass effect below; 1 000 m and 2 000 m are linearly filled between them. Cold extrapolation is validated to within 0.4 % against those reads.</span>
+</div>
+</x-import>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--space-6)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Mass reads at 5 000 kg" subtitle="Base AFM Fig. 5-17 · used to derive the mass effect" padding="none" hint-size="100%,240px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataTable" dense="{{ true }}" columns="{{ massReadColumns }}" rows="{{ massReadRows }}" hint-size="100%,200px"></x-import>
+</x-import>
+</div>
+
+<sc-for list="{{ provCards }}" as="card" hint-placeholder-count="8">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--space-6)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="{{ card.title }}" subtitle="{{ card.subtitle }}" padding="none" hint-size="100%,320px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataTable" dense="{{ true }}" columns="{{ card.columns }}" rows="{{ card.rows }}" hint-size="100%,300px"></x-import>
+</x-import>
+</div>
+</sc-for>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--space-6)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Runway surface coefficients" subtitle="AFM Tab 5/I and 5/II · declared distances are DIVIDED by these" padding="none" hint-size="100%,300px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataTable" dense="{{ true }}" columns="{{ surfColumns }}" rows="{{ surfRows }}" hint-size="100%,260px"></x-import>
+</x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Aerodrome dataset" subtitle="{{ dbSubtitle }}" padding="sm" hint-size="100%,300px">
+<div style="display:flex;align-items:flex-start;gap:var(--space-4)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Badge" tone="caution" size="sm" hint-size="auto,18px">Unverified</x-import>
+<span style="font:var(--type-mono-sm);color:var(--text-muted);line-height:1.5">Generated from the OurAirports public dataset supplied by the operator. OurAirports is crowd-sourced and is not an AIP. Runway figures are the physical length converted from feet and applied to TORA, TODA and ASDA alike — the dataset publishes no declared distances, so a runway with a stopway or clearway reads short and one with a displaced threshold reads long. Slope is computed from the two threshold elevations where both are carried, and is zero where they are not. Surface is reduced to paved or unpaved; the Tab 5/I condition stays the pilot's choice. Every African aerodrome with an ICAO-format ident is held, including the 1 213 that carry no runway record and the 23 with no published elevation — those fields stay unlocked and must be typed in. Runways under 800 ft and runways marked closed are omitted. Confirm against the current AIP, or enter ICAO ZZZZ and type the declared distances in by hand.</span>
+</div>
+</x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Fixed values" subtitle="From the documents, not plotted" padding="none" hint-size="100%,300px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataTable" dense="{{ true }}" columns="{{ fixedColumns }}" rows="{{ fixedRows }}" hint-size="100%,260px"></x-import>
+</x-import>
+</div>
+<sc-if value="{{ hasGaps }}" hint-placeholder-val="{{ true }}">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Alert" tone="caution" title="{{ gapsTitle }}" hint-size="100%,140px">
+<div style="display:flex;flex-direction:column;gap:var(--space-3)">
+<sc-for list="{{ gapRows }}" as="g" hint-placeholder-count="4">
+<span style="font:var(--type-body);color:var(--text-body);line-height:1.5">{{ g }}</span>
+</sc-for>
+</div>
+</x-import>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isFleet }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-width:0;overflow:auto;padding:{{ contentPad }};display:flex;flex-direction:column;gap:var(--space-6);max-width:var(--content-max)">
+<div>
+<div style="font:var(--type-title);color:var(--text-heading)">Aircraft limits</div>
+<div style="font:var(--type-mono-sm);color:var(--text-faint);margin-top:4px">L 410 UVP-E20 · 2 × GE H75-200 · AVIA V 510 five-blade</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-6)">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Powerplant" subtitle="Supplement §I / §II" padding="sm" hint-size="100%,220px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Max take-off" value="750" unit="SHP" hint="560 kW per engine" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Max continuous" value="750" unit="SHP" hint="560 kW per engine" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Propeller diameter" value="2.30" unit="m" hint="5 blades" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="Propeller speed · take-off" value="2 080" unit="RPM" divider="{{ false }}" hint-size="100%,28px"></x-import>
+</x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Take-off power setting" subtitle="Supplement §IV · air bleed closed" padding="sm" hint-size="100%,220px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="TQ" value="100" unit="%" hint="Whichever comes first" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="ITT" value="780" unit="°C" hint="Max permitted" status="caution" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="nG" value="101.5" unit="%" hint="Surge margin vs OAT applies" status="caution" hint-size="100%,28px"></x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="ITT · max continuous" value="720" unit="°C" divider="{{ false }}" hint-size="100%,28px"></x-import>
+</x-import>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Speeds and weights" subtitle="{{ placardSubtitle }}" padding="sm" hint-size="100%,220px">
+<sc-for list="{{ placardRows }}" as="p" hint-placeholder-count="6">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataRow" label="{{ p.label }}" value="{{ p.value }}" unit="{{ p.unit }}" hint="{{ p.hint }}" status="{{ p.status }}" divider="{{ p.divider }}" hint-size="100%,28px"></x-import>
+</sc-for>
+</x-import>
+</div>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Alert" tone="caution" title="Cancelled and prohibited items" hint-size="100%,72px">Water injection is cancelled with the H75-200 installation. Balked landing with one engine inoperative is prohibited. Flight with an inoperative ABC system is prohibited. IELU is replaced by ELU.</x-import>
+</div>
+</sc-if>
+
+<sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-width:0;overflow:auto;padding:{{ contentPad }};display:flex;flex-direction:column;gap:var(--space-6);max-width:var(--content-max)">
+<div>
+<div style="font:var(--type-title);color:var(--text-heading)">History</div>
+<div style="font:var(--type-mono-sm);color:var(--text-faint);margin-top:4px">{{ historyCount }}</div>
+</div>
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Card" title="Computed solutions" subtitle="This session · newest first" padding="none" hint-size="100%,300px">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.DataTable" dense="{{ true }}" columns="{{ histColumns }}" rows="{{ histRows }}" hint-size="100%,260px"></x-import>
+</x-import>
+</div>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+<nav style="flex:0 0 auto;display:flex;background:var(--ink-850);border-top:1px solid var(--border-hairline);padding:var(--space-3) var(--space-2) {{ tabBarPad }}">
+<sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+<button type="button" onClick="{{ n.on }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:var(--space-2) 0;background:transparent;border:none;color:{{ n.color }};font:var(--type-label);letter-spacing:var(--tracking-placard);text-transform:uppercase;cursor:pointer">
+<x-import component-from-global-scope="PerfGraphDesignSystem_f61531.Icon" name="{{ n.icon }}" size="{{ 20 }}" color="{{ n.color }}" hint-size="20px,20px"></x-import>
+{{ n.label }}
+</button>
+</sc-for>
+</nav>
+</sc-if>
+
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;solve&quot;,&quot;check&quot;],&quot;default&quot;:&quot;solve&quot;,&quot;tsType&quot;:&quot;\&quot;solve\&quot; | \&quot;check\&quot;&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;flap&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;18&quot;,&quot;0&quot;],&quot;default&quot;:&quot;18&quot;,&quot;tsType&quot;:&quot;\&quot;18\&quot; | \&quot;0\&quot;&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;requiredNetGradient&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:2,&quot;min&quot;:0,&quot;max&quot;:2.4,&quot;step&quot;:0.05,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Behaviour&quot;}}">
+/* L 410 UVP-E20 (GE H75-200) take-off performance — flaps 18°.
+
+   Every performance number comes from the H75-200 supplement's own plates, digitised in
+   data/fig5-*.js: the TOR chain (Figs. 5-12, 5-13, 5-14), the TOD chain (5-15, 5-16,
+   5-17) and the ASD chain (5-18, 5-19, 5-20), plus the AFM's Tab 5/I and 5/II runway
+   surface coefficients. Slope and wind ARE applied, each distance through its own plate —
+   they are not interchangeable, since uphill reduces TORAcor and TODAcor but increases
+   ASDAcor on a short runway. The balanced-field V1 solve is validated against the
+   supplement's worked example to −0.6 %.
+
+   The only chart data NOT read is flaps 0° (Figs. 5-22 to 5-30), which the operator flies
+   for ferry only.
+
+   REFERENCE ONLY — NOT APPROVED FOR FLIGHT USE. */
+class Component extends DCLogic {
+  MTOW = 6600;
+  WMIN = 4400;
+  WREF_TOD = 5400;
+
+  /* §1a — net 2nd-segment gradient (%) at 6 600 kg, base AFM Fig. 5-17, still air.
+     The ISA−20 column is not a direct read: it is back-calculated from the §1b
+     5 000 kg reads at SL and 3 000 m, and linearly filled at 1 000 / 2 000 m. */
+  GRAD_ALTS_M = [0, 1000, 2000, 3000];
+  GRAD_DEVS = [-20, 0, 20, 35];
+  GRAD6600 = [
+    [2.72, 2.20, 1.25, -0.65],
+    [2.25, 1.55, 0.20, -1.50],
+    [1.79, 0.95, -0.80, -2.40],
+    [1.32, -0.30, -2.10, -3.20],
+  ];
+  GRAD_DERIVED_COL = 0;
+  /* §1b derived — mass effect %/1 000 kg against density altitude (m) */
+  MASS_EFFECT = [[0, 2.94], [3000, 2.47], [4267, 1.50]];
+  /* V1 scan bounds. 73 is where BOTH Fig. 5-17 and Fig. 5-20 start their V1 axes, so
+     the search covers the full charted band; this was 74 while the tables carried 73,
+     which quietly excluded the coldest, lowest-V1 column from every solution. Vmcg 70 is
+     the hard floor below which the charts must not be entered at all. */
+  V1_MIN = 73; V1_MAX = 84; VMCG = 70; V2 = 84; VMCA = 73;
+  /* V1 CAN NEVER EXCEED VR. A rejected take-off is not possible after rotation, so V1 ≤ VR
+     is a certification limit, not a preference. VR is fixed at 81 KIAS for flaps 18°
+     (base AFM p. 10) while Figs. 5-17 and 5-20 carry their V1 axes to 84 — the charts
+     describe a speed range wider than the aeroplane's own schedule permits, which is why
+     this ceiling has to be applied in code rather than assumed from the axis.
+     V1_MAX stays 84 because it is the CHART reference column; V1_USE_MAX is what may be
+     recommended or solved for. */
+  get V1_USE_MAX() { return Math.min(this.V1_MAX, this.VR_SCHED); }
+  /* Operator schedule — the speeds this operation has always flown. VR and V2 are fixed
+     by the AFM; V1 is scheduled here AND solved for, so the app can show what holding
+     the scheduled value costs against the best V1 the runway allows. */
+  V1_SCHED = 81; VR_SCHED = 81;
+
+  /* AFM p. 21, verbatim: "Apply coefficients … to adapt corrected values of TORA, TODA
+     from table Tab. 5/I and from table Tab. 5/II for corrected ASDA. Corrected values of
+     TORA, TODA and ASDA must be divided by coefficients from above specified tables."
+
+     Both tables are now transcribed from the AFM. Tab 5/I was already here and matches
+     the source exactly; Tab 5/II is new and REPLACES the Tab 5/I stand-in that ASDA used.
+
+     THE EARLIER ASSUMPTION WAS WRONG. This code previously reasoned that "a wet or
+     unpaved surface costs a little acceleration but a great deal of braking, so the
+     accelerate-stop penalty is the larger of the two", and warned that substituting
+     Tab 5/I therefore understated the ASD penalty. That holds for contaminated PAVED
+     surfaces but reverses on soft ground:
+
+       muddy              TOR 1.47   ASD 1.03    mud brakes the aeroplane for you
+       85.3 psi strength  TOR 1.55   ASD 1.35    soft ground likewise
+       soft sandy         TOR 1.05   ASD 1.05    identical
+       slush / water      TOR 1.21   ASD 1.30    here the braking penalty IS larger
+       dry snow           TOR 1.17   ASD 1.20
+       compacted snow     TOR 1.25   ASD 1.30
+
+     So the substitution was optimistic on contaminated paved runways and heavily
+     conservative on mud — on an unpaved muddy strip it was dividing ASDA by 1.47 where
+     the AFM says 1.03, understating ASDA-limited weight by a wide margin. Neither
+     direction was safe to guess, which is why it was reported rather than absorbed.
+
+     Tab 5/II also carries six PAVED FRICTION rows that have no Tab 5/I counterpart —
+     measured braking friction on an otherwise clean runway. Reduced friction does not
+     slow acceleration, so those entries take a TOR/TOD coefficient of 1.00 and affect
+     the accelerate-stop case only. */
+
+  /* Tab 5/I, AFM Section V — corrected TORA and TODA are DIVIDED by these */
+  SURF = {
+    "Hard, dry (reference)": 1.00,
+    "Paved · slush or wet snow ≤ 12 mm": 1.21,
+    "Paved · water ≤ 10 mm": 1.21,
+    "Dry snow ≤ 50 mm": 1.17,
+    "Unpaved · compacted snow": 1.25,
+    "Unpaved · soft sandy": 1.05,
+    "Unpaved · 85.3 psi strength": 1.55,
+    "Unpaved · muddy": 1.47,
+    "Paved · friction 0.50–0.45": 1.00,
+    "Paved · friction 0.45–0.40": 1.00,
+    "Paved · friction 0.40–0.35": 1.00,
+    "Paved · friction 0.35–0.30": 1.00,
+    "Paved · friction 0.30–0.25": 1.00,
+    "Paved · friction 0.25–0.20": 1.00,
+  };
+
+  /* Tab 5/II, AFM Section V — corrected ASDA is DIVIDED by these */
+  SURF_ASDA = {
+    "Hard, dry (reference)": 1.00,
+    "Paved · slush or wet snow ≤ 12 mm": 1.30,
+    "Paved · water ≤ 10 mm": 1.30,
+    "Dry snow ≤ 50 mm": 1.20,
+    "Unpaved · compacted snow": 1.30,
+    "Unpaved · soft sandy": 1.05,
+    "Unpaved · 85.3 psi strength": 1.35,
+    "Unpaved · muddy": 1.03,
+    "Paved · friction 0.50–0.45": 1.06,
+    "Paved · friction 0.45–0.40": 1.12,
+    "Paved · friction 0.40–0.35": 1.19,
+    "Paved · friction 0.35–0.30": 1.26,
+    "Paved · friction 0.30–0.25": 1.34,
+    "Paved · friction 0.25–0.20": 1.43,
+  };
+
+  /* THE single declaration of every numeric field's range. fld() builds the stepper
+     clamp and the invalid border from this, and compute() clamps the committed draft from
+     the same entry, so the two cannot disagree.
+
+     This replaced a parallel LIM table inside compute() that duplicated these literals.
+     The duplication was not theoretical: `tow` was written as min 3 000 there against
+     min 4 400 here in the same edit, and only an ad-hoc grep caught it. The two have
+     different consequences — these bounds drive the steppers and the red invalid border,
+     while compute() decides what is actually committed — so a divergence would let a field
+     look valid, step freely, and then be silently rewritten on Compute.
+
+     wrap is set only on the two compass-like fields, which roll round instead of clamping
+     so stepping below the first value reaches the last. */
+  FIELD_RANGE = {
+    elev:    { step: 10,   min: -1000, max: 14000, dec: 0 },
+    oat:     { step: 1,    min: -50,   max: 50,    dec: 0 },
+    qnh:     { step: 1,    min: 900,   max: 1050,  dec: 0 },
+    rwyId:   { step: 1,    min: 1,     max: 36,    dec: 0, wrap: 36 },
+    toda:    { step: 10,   min: 400,   max: 4500,  dec: 0 },
+    tora:    { step: 10,   min: 400,   max: 4000,  dec: 0 },
+    asda:    { step: 10,   min: 400,   max: 4500,  dec: 0 },
+    slope:   { step: 0.1,  min: -3,    max: 3,     dec: 1 },
+    windDir: { step: 10,   min: 0,     max: 350,   dec: 0, wrap: 360 },
+    windKt:  { step: 1,    min: 0,     max: 60,    dec: 0 },
+    reqNet:  { step: 0.05, min: -2,    max: 6,     dec: 2 },
+    tow:     { step: 50,   min: 4400,  max: 6600,  dec: 0 },
+    /* Vmcg is the hard floor and VR the hard ceiling — see V1_USE_MAX. A manual V1
+       outside 70…81 is not a value the aeroplane can fly, so it clamps rather than
+       warns. */
+    v1Manual:{ step: 0.5,  min: 70,    max: 81,    dec: 1 },
+  };
+
+  constructor(p) {
+    super(p);
+    const input = {
+      elev: 4520, oat: 30, qnh: 1017, rwyId: 21,
+      toda: 1550, tora: 1450, asda: 1500, slope: 0,
+      icao: "ZZZZ", rwyEnd: "", rwySurf: "",
+      surface: "Hard, dry (reference)", windDir: 0, windKt: 0,
+      v1Mode: "sched", v1Manual: 78,
+      flap: this.props.flap || "18", tow: 6000,
+      reqNet: Math.round((this.props.requiredNetGradient ?? 2) * 20) / 20,
+    };
+    this.state = {
+      draft: input, committed: input, tab: "takeoff",
+      mode: this.props.mode || "solve", stamp: this.now(),
+      view: "calc", theme: "dark", history: [], db: null,
+      vw: typeof window === "undefined" ? 1280 : window.innerWidth,
+    };
+  }
+  componentDidMount() {
+    /* the data is a plain script in <helmet>, not a dynamic import — a dynamic import of
+       a relative path cannot be inlined into a single saved file, and failed silently */
+    const grab = () => {
+      if (window.PG_AIRPORTS) { this.setState({ db: window.PG_AIRPORTS }); return true; }
+      return false;
+    };
+    if (!grab()) {
+      let n = 0;
+      this.dbPoll = setInterval(() => {
+        if (grab() || ++n > 100) clearInterval(this.dbPoll);
+      }, 50);
+    }
+    this.onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this.onResize);
+    window.addEventListener("orientationchange", this.onResize);
+    this.onResize();
+  }
+  componentWillUnmount() {
+    clearInterval(this.dbPoll);
+    window.removeEventListener("resize", this.onResize);
+    window.removeEventListener("orientationchange", this.onResize);
+  }
+  /* the aerodrome behind the entered ICAO, or null in manual mode */
+  apt(icao) {
+    const db = this.state.db;
+    return db ? db.findAirport(icao) : null;
+  }
+  /* Apply an aerodrome and one of its runway ends to the draft. Declared distances are
+     not in the dataset, so the published physical length fills TORA, TODA and ASDA. */
+  applyApt(a, end) {
+    const db = this.state.db;
+    const ends = db.endsOf(a);
+    /* endsOf already signs the slope for the direction of take-off. Either half of the
+       record may be absent: keep whatever the pilot already typed for those fields. */
+    const r = ends.find((e) => e.end === end) || ends[0] || null;
+    this.setState((st) => ({
+      draft: {
+        ...st.draft, icao: a.icao,
+        rwyEnd: r ? r.end : "",
+        /* a figure the dataset cannot fill is blanked, never carried from the
+           previously selected aerodrome — it must be typed in */
+        elev: a.elev === null ? "" : a.elev,
+        rwyId: r ? db.headingOf(r.end) / 10 : "",
+        toda: r ? r.len : "",
+        tora: r ? r.len : "",
+        asda: r ? r.len : "",
+        slope: r ? r.slope : "",
+        rwySurf: r ? r.surface : "",
+        /* never default an unpaved or unrecorded runway to the 1.00 paved coefficient —
+           that is the optimistic end of Tab 5/I and overstates the runway */
+        surface: !r ? st.draft.surface : r.surface === "Paved" ? "Hard, dry (reference)" : "Unpaved · soft sandy",
+      },
+    }));
+  }
+  now() {
+    const d = new Date(), p = (n) => String(n).padStart(2, "0");
+    return `Computed ${p(d.getUTCHours())}${p(d.getUTCMinutes())} Z`;
+  }
+  /* Clamp and round one field from its FIELD_RANGE entry. THE only place that arithmetic
+     lives — compute(), the NumberField steppers, the phone gradient buttons and the live
+     2nd-segment edits all call it. Each of those used to carry its own copy of the bounds
+     and the rounding: reqNet's −2/6 and 0.05 appeared in five separate expressions, and a
+     hand-rolled snap() hardcoded ×20 for its two decimals. */
+  /* Display form for ANY V1 value. The scan works at 0.25 kt so a V1 can legitimately
+     land on a half knot, but whole numbers must not render as "81.0". v1Basis.text is
+     this applied to the SELECTED V1; the balanced V1 and the best V1 are different
+     quantities needing the same treatment, which is why it lives here and not only on
+     the descriptor. */
+  v1Text(v) {
+    const n = this.num(v);
+    if (!Number.isFinite(n)) return "\u2014";
+    return Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1);
+  }
+  clampField(key, n) {
+    const r = this.FIELD_RANGE[key];
+    const v = Number(n);
+    if (!r || !Number.isFinite(v)) return n;
+    const p = Math.pow(10, r.dec || 0);
+    const w = r.wrap ? ((v - r.min) % r.wrap + r.wrap) % r.wrap + r.min : Math.max(r.min, Math.min(r.max, v));
+    return Math.round(w * p) / p;
+  }
+  stepField(key, dir, from) {
+    const r = this.FIELD_RANGE[key];
+    const cur = Number.isFinite(this.num(from)) ? this.num(from) : r.min;
+    return this.clampField(key, cur + dir * r.step);
+  }
+  bumpReqNet(d) {
+    this.setState((st) => {
+      const r = this.clampField("reqNet", this.num(st.draft.reqNet) + d);
+      return { draft: { ...st.draft, reqNet: r }, committed: { ...st.committed, reqNet: r } };
+    });
+  }
+  /* fixed decimals with a real minus sign (U+2212), per the numeric convention */
+  dec(n, d) {
+    const v = this.num(n);
+    if (!Number.isFinite(v)) return "\u2014";
+    return v.toFixed(d).replace("-", "\u2212");
+  }
+  /* a correction factor as a signed percentage; exactly neutral reads "no change" */
+  pct(f) {
+    const v = (f - 1) * 100;
+    if (!Number.isFinite(v)) return "\u2014";
+    if (Math.abs(v) < 0.05) return "No change";
+    return `${v > 0 ? "+" : "\u2212"}${Math.abs(v).toFixed(1)} %`;
+  }
+  /* Every formatter renders an em dash for a figure that does not exist, so a blank
+     input can never be presented as a number. */
+  /* Number("") is 0 and 0 is finite, so a blank field must be mapped to NaN before any
+     finite check — otherwise a missing figure prints as a confident zero. */
+  num(v) { return v === "" || v === null || v === undefined ? NaN : Number(v); }
+  f(n) {
+    const v = this.num(n);
+    if (!Number.isFinite(v)) return "\u2014";
+    return Math.round(v).toLocaleString("en-US").replace(/,/g, "\u2009");
+  }
+  sgn(n, d) {
+    const v = this.num(n);
+    if (!Number.isFinite(v)) return "\u2014";
+    const s = d === undefined ? String(Math.round(v)) : v.toFixed(d);
+    return (v > 0 ? "+" : "").concat(s).replace("-", "\u2212");
+  }
+
+  /* linear interpolation with linear extrapolation off both ends */
+  lin(xs, ys, x) {
+    const n = xs.length;
+    let i = 0;
+    while (i < n - 2 && x > xs[i + 1]) i++;
+    const t = (x - xs[i]) / (xs[i + 1] - xs[i]);
+    return ys[i] + t * (ys[i + 1] - ys[i]);
+  }
+  grid(xs, ys, table, x, y) {
+    const rows = xs.map((_, r) => this.lin(ys, table[r], y));
+    return this.lin(xs, rows, x);
+  }
+  /* Read one carrier row of a digitised carpet panel at x, honouring the plotted
+     extent: past the last drawn point it extrapolates and reports offChart. */
+  row(xs, row, x) {
+    const ok = xs.map((v, n) => n).filter((n) => row[n] !== null);
+    const gx = ok.map((n) => xs[n]), gy = ok.map((n) => row[n]);
+    return { v: this.lin(gx, gy, x), lo: gx[0], hi: gx[gx.length - 1] };
+  }
+  /* Bilinear read of a carpet: interpolate the two bracketing carrier rows. */
+  carpet(xs, cs, table, x, C) {
+    const c = Math.max(cs[0], Math.min(cs[cs.length - 1], C));
+    let i = 0;
+    while (i < cs.length - 2 && c > cs[i + 1]) i++;
+    const a = this.row(xs, table[i], x), b = this.row(xs, table[i + 1], x);
+    const t = (c - cs[i]) / (cs[i + 1] - cs[i]);
+    /* the family's plotted boundary is itself a curve in (carrier, x) — interpolate it
+       rather than OR-ing the two rows, which would flag a point the carpet does cover */
+    const hi = a.hi + t * (b.hi - a.hi), lo = a.lo + t * (b.lo - a.lo);
+    /* The plotted boundary is interpolated between two carrier rows, so a point can
+       land a hair outside a boundary the plate plainly covers — at carrier 801 m the
+       weight family interpolates to 6 598.9 kg and 6 600 kg read as extrapolated by
+       1.1 kg. Grazes inside 5 % of one grid step are the interpolation's own error,
+       not an extrapolation, so they do not raise the flag. */
+    const tol = 0.05 * Math.abs(xs[xs.length - 1] - xs[0]) / (xs.length - 1);
+    return {
+      v: a.v + t * (b.v - a.v),
+      off: x > hi + tol || x < lo - tol,
+      limit: x > hi ? hi : lo,
+      clampC: C > cs[cs.length - 1] + tol,
+    };
+  }
+
+  solve(raw) {
+    /* Coerce every numeric input up front. A blank field is "" and would otherwise
+       turn the atmosphere chain into string concatenation — pressure altitude would
+       read plausibly while density altitude came out NaN. */
+    const N = (v) => this.num(v);
+    const i = {
+      ...raw,
+      elev: N(raw.elev), qnh: N(raw.qnh), oat: N(raw.oat),
+      toda: N(raw.toda), tora: N(raw.tora), asda: N(raw.asda),
+      slope: N(raw.slope), rwyId: N(raw.rwyId),
+      windDir: N(raw.windDir), windKt: N(raw.windKt), v1Manual: N(raw.v1Manual),
+      tow: N(raw.tow), reqNet: N(raw.reqNet),
+    };
+    const paFt = i.elev + (1013.25 - i.qnh) * 27;
+    const isaT = 15 - 1.98 * (paFt / 1000);
+    const dev = i.oat - isaT;
+    const daFt = paFt + 118.8 * dev;
+    const paM = paFt * 0.3048, daM = daFt * 0.3048;
+
+    /* OEI 2nd segment, net, still air */
+    const g6600 = this.grid(this.GRAD_ALTS_M, this.GRAD_DEVS, this.GRAD6600, paM, dev);
+    const k = this.lin(this.MASS_EFFECT.map((a) => a[0]), this.MASS_EFFECT.map((a) => a[1]), daM);
+    const reqNet = i.reqNet;
+    const gradAt = (w) => g6600 + ((this.MTOW - w) / 1000) * k;
+    const climbRaw = this.MTOW + ((g6600 - reqNet) / k) * 1000;
+    const climb = Math.max(this.WMIN, Math.min(this.MTOW, climbRaw));
+
+    /* TOD field length */
+    const kS = this.SURF[i.surface] ?? 1;
+    /* wind component along the runway axis — the chart takes the reported component */
+    const ang = ((i.windDir - i.rwyId * 10) * Math.PI) / 180;
+    const hwRaw = i.windKt * Math.cos(ang);
+    /* ---- AFM chart modules (data/*.js, loaded in <helmet>) ----------------------
+       These replace the small hand-entered grids this app started with. Every number
+       below now comes from the H75 supplement plates: Figs. 5-16/5-17 for TOD,
+       5-18 for the ASDA slope+wind correction, 5-19/5-20 for ASD. The chain is
+       validated against the supplement's own worked example to −0.6 % (see
+       data/balanced-field.js). If a module is missing the app must not guess. */
+    const D16 = window.PG_FIG516, D17 = window.PG_FIG517;
+    const D18 = window.PG_FIG518, D19 = window.PG_FIG519, D20 = window.PG_FIG520;
+    const haveAfm = !!(D16 && D17 && D18 && D19 && D20);
+
+    /* Third locus, live since Fig. 5-14's weight panel was plotted. TOR is the
+       take-off RUN — to lift-off, not to 35 ft — so it is the shortest of the three and
+       binds only where TORA is materially less than TODA (no clearway, or a displaced
+       threshold). The AFM procedure plots all three on Fig. 5-21 and takes the LOWER
+       intersection weight, so having it means the app now does the full charted read. */
+    const D13 = window.PG_FIG513, D14 = window.PG_FIG514;
+    const haveTor = !!(D13 && D14 && D14.weightPanelAvailable);
+    const torR = haveTor ? D13.torRequired(paFt, i.oat) : null;
+    const tor5400 = torR ? torR.tor : null;
+    const todR = haveAfm ? D16.todRequired(paFt, i.oat) : null;
+    const asdR = haveAfm ? D19.asdRequired(paFt, i.oat) : null;
+    const tod5400 = todR ? todR.tod : null;
+    const asd5400 = asdR ? asdR.asd : null;
+
+    /* TODA has its OWN slope/wind plate — Fig. 5-15, whose slope panel is now digitised
+       in full (all 13 curves). It is NOT interchangeable with Fig. 5-18: uphill reduces
+       TODAcor at every carrier but increases ASDAcor below ~1 100 m, so the stand-in
+       previously used here carried the wrong sign (×1.024 against the true ×0.967 at
+       600 m and +2 %). Both of its panels are now read, so nothing here is borrowed:
+       TORA runs on Fig. 5-12, TODA on Fig. 5-15, ASDA on Fig. 5-18. */
+    const D15 = window.PG_FIG515;
+    const todaC = !haveAfm ? null
+      : D15 ? D15.todaCorrected(i.toda, i.slope, hwRaw)
+      : D18.asdaCorrected(i.toda, i.slope, hwRaw);
+    const asdaC = haveAfm ? D18.asdaCorrected(i.asda, i.slope, hwRaw) : null;
+    /* The AFM does not authorize extrapolating the tailwind or slope curves, so beyond
+       them the chart refuses rather than estimating. Fall back to the uncorrected
+       declared distance and let the advisory carry the refusal. */
+    const refused = !haveAfm || todaC.notAuthorized || asdaC.notAuthorized;
+    const refusalReason = refused && todaC ? (todaC.reason || asdaC.reason) : "";
+    /* Fig. 5-15 returns todaCor, Fig. 5-18 returns asdaCor — read whichever is present
+       so the fallback path still works if the module fails to load. */
+    const todaOut = todaC ? (todaC.todaCor != null ? todaC.todaCor : todaC.asdaCor) : null;
+    const slopeC = { v: haveAfm && !refused ? todaC.afterSlope / i.toda : 1, off: false };
+    const afterSlope = haveAfm && !refused ? todaC.afterSlope : i.toda;
+    const windC = haveAfm && !refused && todaC.afterSlope ? todaOut / todaC.afterSlope : 1;
+    const afterWind = haveAfm && !refused ? todaOut : i.toda;
+    /* Both are DIVIDED per AFM p. 21, each by its own table: kS is Tab 5/I for TORA and
+       TODA, kSA is Tab 5/II for ASDA. They differ in EITHER direction — Tab 5/II is
+       harsher on contaminated paved surfaces but far gentler on mud (1.03 against
+       Tab 5/I's 1.47) — so neither can stand in for the other. */
+    const kSA = this.SURF_ASDA[i.surface] ?? 1;
+    /* TORA has its OWN slope/wind plate — Fig. 5-12, now digitised. It is not
+       interchangeable with Fig. 5-18: uphill REDUCES TORAcor at every carrier but
+       INCREASES ASDAcor below ~1 100 m, so the stand-in previously used here carried the
+       wrong sign (×1.024 against the true ×0.950 at 600 m and +2 %). */
+    const D12 = window.PG_FIG512;
+    const toraC = haveTor && !refused
+      ? (D12 ? D12.toraCorrected(i.tora, i.slope, hwRaw) : D18.asdaCorrected(i.tora, i.slope, hwRaw))
+      : null;
+    const toraCor = toraC ? (toraC.toraCor != null ? toraC.toraCor : toraC.asdaCor) / kS : null;
+    /* The plates also return a NON-refusing note, and it was being dropped. The one that
+       matters is the AFM's 38.8 kt (20 m/s) headwind cap: above it the charts are entered
+       AT 38.8, so 39, 45 and 60 kt all produced an identical TODAcor with nothing on
+       screen to say the extra knots were discarded. Collected here and reported as a
+       caution, since a pilot crediting 60 kt of headwind is crediting distance the
+       aeroplane will not get. */
+    const clampNotes = refused ? [] : [...new Set([todaC, asdaC, toraC]
+      .filter((r) => r && r.clamped && r.reason).map((r) => r.reason))];
+    const todaCor = afterWind / kS;
+    const asda = (haveAfm && !refused ? asdaC.asdaCor : i.asda) / kSA;
+
+    const todFullAt = (w, v1) => {
+      if (!haveAfm) return { v: 0, gw: 1, fv: 1, off: true, clampC: false, carrier: 0, wLimit: this.MTOW };
+      const atRef = D17.todAt(tod5400, w, this.V1_MAX);
+      const v = D17.todAt(tod5400, w, v1);
+      return {
+        v, gw: atRef / tod5400, fv: atRef ? v / atRef : 1,
+        off: todR.extrapolated, clampC: false, carrier: atRef, wLimit: this.MTOW,
+      };
+    };
+    const asdFullAt = (w, v1) => {
+      if (!haveAfm) return null;
+      return { v: D20.asdAt(asd5400, w, v1), off: asdR.extrapolated };
+    };
+
+    /* ---- V1 -------------------------------------------------------------------
+       Base AFM p. 10 makes V1 VARIABLE for flaps 18° — read from the graphs — while VR 81
+       and V2 84 are fixed. A single memorised V1 81 is therefore an operator
+       simplification, not the AFM method, and on a short field it is expensive: at
+       PA 2 810 ft on 950 m, V1 81 gives 4 542 kg where the balanced 77.5 gives 5 691 kg.
+       On a long runway it costs nothing, which is presumably how the practice arose.
+
+       So which V1 drives RTOW is now a MODE rather than a constant:
+         sched  — the operator's fixed 81 (default; unchanged behaviour)
+         afm    — the V1 that maximises RTOW, i.e. the AFM's own intent
+         manual — a V1 the crew enters, clamped to Vmcg 70 … VR 81
+       Whichever is selected, the others are still computed and displayed so the choice is
+       explicit and comparable rather than baked in.
+
+       The scan below is V1-independent (it takes t), so it runs first and the selected V1
+       is resolved after it — that is what lets "afm" mode use its own result. */
+    const wAt = (t) => {
+      const lim = (fn, avail) => {
+        let a = 3500, b = this.MTOW + 400;
+        if (fn(a) > avail) return null;
+        if (fn(b) <= avail) return b;
+        for (let n = 0; n < 44; n++) { const m = (a + b) / 2; if (fn(m) <= avail) a = m; else b = m; }
+        return a;
+      };
+      /* undefined = this limit is NOT DIGITISED and does not apply.
+         null      = it applies and NO weight in range satisfies it.
+         The two used to share `null`, and rtowAtV1 skipped either — so on a short runway
+         at high V1, where accelerate-stop cannot be met even at minimum weight, ASD was
+         silently dropped and the optimum came back as a weight ASD forbids (6 042 kg at
+         V1 83.8 on a 950 m strip, against 4 336 kg at the schedule V1). */
+      return {
+        tod: lim((w) => todFullAt(w, t).v, todaCor),
+        asd: asd5400 === null ? undefined : lim((w) => asdFullAt(w, t).v, asda),
+        tor: !haveTor ? undefined : lim((w) => D14.torAt(tor5400, w, t), toraCor),
+      };
+    };
+    /* The general problem is: which V1 in 73…VR maximises the weight this runway
+       supports? The AFM's balanced-field crossing is ONE case of that — the interior
+       optimum where the rising TOD locus meets the falling ASD locus. The other case is
+       a boundary optimum, where ASD never binds and weight simply keeps rising to V1 84.
+       An earlier version tested only for a crossing and required BOTH loci to be pinned
+       at the cap to call V1 irrelevant; on an ordinary long runway only ASD is pinned, so
+       neither branch fired and the pilot got "—". Scanning for the maximum handles both.
+
+       The figure that matters is RTOW, not the field limit alone: if the climb limit
+       binds below both, moving V1 changes nothing and the honest cost is zero. */
+    const rtowAtV1 = (t) => {
+      const p = wAt(t);
+      /* An APPLICABLE limit with no solution kills the V1 outright; only an undigitised
+         one may be skipped. Testing !== null instead let an unsatisfiable limit through. */
+      if (p.tod === null) return null;
+      if (p.asd === null || p.tor === null) return null;
+      let w = p.tod;
+      if (p.asd !== undefined) w = Math.min(w, p.asd);
+      if (p.tor !== undefined) w = Math.min(w, p.tor);
+      return { field: w, rtow: Math.min(w, climb, this.MTOW) };
+    };
+    let v1Best = null, wBest = null, rtowBest = null, rtowWorst = null, v1NoFit = true;
+    for (let t = this.V1_MIN; t <= this.V1_USE_MAX + 1e-9; t += 0.25) {
+      const r = rtowAtV1(t);
+      if (!r) continue;
+      v1NoFit = false;
+      /* ties resolve to the LOWER V1 — less energy to stop for the same payload */
+      if (rtowBest === null || r.rtow > rtowBest + 1) { v1Best = t; wBest = r.field; rtowBest = r.rtow; }
+      if (rtowWorst === null || r.rtow < rtowWorst) rtowWorst = r.rtow;
+    }
+    /* The AFM balanced point at its TRUE charted value — the scan runs the full axis to
+       84 so the crossing is not misreported, and v1BalancedOverVr says whether it is
+       actually usable. A crossing above VR is real chart geometry but unflyable: the
+       aeroplane rotates at 81, so the extra knots cannot be held. */
+    let v1Balanced = null, wBalanced = null;
+    {
+      let prev = null;
+      for (let t = this.V1_MIN; t <= this.V1_MAX + 1e-9; t += 0.25) {
+        const p = wAt(t);
+        if (p.tod == null || p.asd == null) continue;
+        const d = p.tod - p.asd;
+        if (prev && (prev.d < 0) !== (d < 0)) {
+          const f = prev.d / (prev.d - d);
+          v1Balanced = Math.round((prev.t + f * (t - prev.t)) * 10) / 10;
+          wBalanced = prev.w + f * (p.tod - prev.w);
+          break;
+        }
+        prev = { t, d, w: p.tod };
+      }
+    }
+    const v1BalancedOverVr = v1Balanced !== null && v1Balanced > this.VR_SCHED + 0.01;
+    const rtowAtSched = v1NoFit ? null : (rtowAtV1(this.V1_SCHED) || { rtow: null }).rtow;
+    /* V1 cannot matter when RTOW is the same across the WHOLE scanned range — a property
+       of the range, not of the schedule. Comparing best against the schedule instead made
+       "V1 is irrelevant" true by construction in afm mode, where the selected V1 IS the
+       best one. */
+    const v1Irrelevant = !v1NoFit && rtowBest !== null && rtowWorst !== null && rtowBest - rtowWorst < 1;
+    /* How steeply weight trades against V1 here. A 3 kt change reading as ~970 kg looks
+       like an error until you see the two gradients behind it: 3 kt of V1 adds about 90 m
+       of ASD, while the ASD-vs-weight curve is only ~95 m per 1 000 kg, so 90 m really is
+       worth most of a tonne. Stating the rate lets a pilot judge that instead of doubting
+       the figure. */
+    const v1RateSpan = (t) => (v1Best === null ? null : Math.abs(v1Best - t));
+
+    /* The selected V1. "afm" falls back to the schedule when no optimum exists (no V1
+       fits the runway at any weight), so the readouts still have a speed to quote. */
+    const v1Mode = ["sched", "afm", "manual"].includes(i.v1Mode) ? i.v1Mode : "sched";
+    const v1Manual = this.clampField("v1Manual", Number.isFinite(this.num(i.v1Manual)) ? this.num(i.v1Manual) : 78);
+    /* In afm mode, fall back to the operator schedule where V1 makes NO difference —
+       across a long runway every V1 gives the same RTOW and the scan's tie-break would
+       otherwise return the lowest scanned speed (73), needlessly changing a briefed
+       number for zero payload. Standardisation wins when the trade is free. */
+    const v1 = v1Mode === "manual" ? v1Manual
+      : v1Mode === "afm" ? ((v1Best === null || v1Irrelevant) ? this.V1_SCHED : v1Best)
+      : this.V1_SCHED;
+
+    /* The V1 BASIS as one descriptor. Five sites had written the basis as a hardcoded
+       word beside a derived number — "schedule V1 77.5" on the headline card while the
+       selector two columns away is labelled "Schedule 81", and a CSV row reading
+       "V1 (operator schedule) 81" next to distances computed at 77.5. Two sites carried
+       correct copies of the mode ternary and three carried stale literals: the same
+       one-fact-many-copies pattern behind the four earlier V1-range regressions.
+       Everything downstream reads these fields. */
+    const v1Basis = {
+      mode: v1Mode,
+      label: v1Mode === "sched" ? "operator schedule" : v1Mode === "afm" ? "AFM best" : "manual",
+      note: v1Mode === "sched" ? "Operator schedule" : v1Mode === "afm" ? "AFM · best for weight" : "Manual entry",
+      /* V1 is scanned at 0.25 kt so it can land on a half knot, but the schedule and most
+         manual entries are whole numbers and "V1 81.0" reads like false precision. One
+         display form here rather than dec(v1,1) at each site. */
+      text: this.v1Text(v1),
+    };
+    /* what the SELECTED V1 achieves, and what it forgoes against the best available */
+    const rtowAtSel = v1NoFit ? null : (rtowAtV1(v1) || { rtow: null }).rtow;
+    const v1Gain = (rtowBest === null || rtowAtSel === null) ? null : Math.max(0, rtowBest - rtowAtSel);
+
+    const v1RateKgKt = (v1Gain === null || v1Best === null || v1RateSpan(v1) === null || v1RateSpan(v1) < 0.05)
+      ? null : Math.round(v1Gain / v1RateSpan(v1));
+
+    const todFull = (w) => todFullAt(w, v1);
+    const asdFull = (w) => asdFullAt(w, v1);
+    const todAt = (w) => todFull(w).v;
+    /* WHICH distance produced the field limit. The joint bisection below enforces both
+       constraints and so returns the right WEIGHT, but it discards the identity of the
+       binding one — and the advisory was hardcoded to say "TOD field length", telling a
+       pilot take-off distance was limiting when accelerate-stop was. That points at the
+       wrong remedy: a clearway rather than a stopway or a lower V1. Solve each limit
+       separately and name the lower. */
+    const sched = wAt(v1);
+    const todLim = sched.tod, asdLim = sched.asd;
+    /* Rank an IMPOSSIBLE limit (null) as infinitely binding, not as absent. Only
+       undefined — not digitised — is excluded from the comparison. Filtering on != null
+       dropped both, so when accelerate-stop could not be met at any weight the app named
+       the next-best limit instead: "Limit · TOD field length" on the RTOW card while the
+       advisory beside it correctly said "ASDR 1 105 m exceeds ASDAcor 900 m". That is the
+       exact misdiagnosis the comment above sched exists to prevent — it points a pilot at
+       a clearway when the remedy is a stopway or a lower V1. */
+    const rank = (v) => (v === null ? -Infinity : v);
+    const asdIsBinding = asdLim !== undefined && todLim !== undefined && rank(asdLim) < rank(todLim) - 1;
+    let lo = 3000, hi = 8000;
+    for (let n = 0; n < 40; n++) {
+      const mid = (lo + hi) / 2;
+      const a = asdFull(mid);
+      const torOk = !haveTor || D14.torAt(tor5400, mid, v1) <= toraCor;
+      if (todAt(mid) <= todaCor && (a === null || a.v <= asda) && torOk) lo = mid; else hi = mid;
+    }
+    const fieldRaw = lo;
+    const field = Math.max(this.WMIN, Math.min(this.MTOW, fieldRaw));
+
+    const rtow = Math.min(field, climb, this.MTOW);
+    /* The one binding test. Both limits are clamped to MTOW, so comparing them alone
+       makes the climb look binding whenever neither is — every readout, the advisory
+       and the history row all read it from here. */
+    const climbBinds = climb <= field && climb < this.MTOW;
+    const fieldBinds = field < climb && field < this.MTOW;
+    /* Which of the three distances actually binds. Reported everywhere through this one
+       value — the app previously hardcoded "TOD" at several sites and kept saying it after
+       ASD started setting the limit. */
+    const torLim = haveTor ? (() => {
+      let x = 3500, y = this.MTOW + 400;
+      if (D14.torAt(tor5400, x, v1) > toraCor) return null;
+      if (D14.torAt(tor5400, y, v1) <= toraCor) return y;
+      for (let n = 0; n < 44; n++) { const m = (x + y) / 2; if (D14.torAt(tor5400, m, v1) <= toraCor) x = m; else y = m; }
+      return x;
+      /* undefined, NOT null — the convention wAt documents. null means "applies and no
+         weight satisfies it" and ranks as infinitely binding, so returning null here made
+         TOR the named limit on every computation whenever its charts were absent, with a
+         nonsense "TORAcor 0 m" beside it. Reachable, not hypothetical: haveTor = false is
+         a supported state, and a chart module has silently failed to load in the bundle
+         before. */
+    })() : undefined;
+    const cands = [["TOD", todLim], ["ASD", asdLim], ["TOR", torLim]].filter((z) => z[1] !== undefined);
+    const fieldKind = cands.length ? cands.reduce((p, q) => (rank(q[1]) < rank(p[1]) ? q : p))[0] : "TOD";
+    const binds = climbBinds ? "OEI 2nd segment climb"
+      : fieldBinds ? `${fieldKind} field length` : "Structural MTOW";
+    const bindsShort = climbBinds ? "OEI climb" : fieldBinds ? `${fieldKind} field` : "Structural";
+    const check = this.state && this.state.mode === "check";
+    const weight = check ? i.tow : rtow;
+    /* A missing required figure makes every downstream number NaN. compute() already
+       refuses to RECORD such a case, but solve() still ran and the readouts rendered
+       "NaN m" — reachable by clearing a field and pressing Compute. Flagged here so the
+       view can show em dashes instead. */
+    const incomputable = ["elev", "oat", "qnh", "toda", "tora", "asda", "slope"]
+      .filter((k) => !Number.isFinite(this.num(i[k])));
+
+    /* The binding field limit as ONE descriptor: which distance, and the available
+       figure it was measured against. Four separate sites had asserted this identity by
+       hand — the card label, the card note, the TODR row hint and the CSV — and they
+       drifted apart each time the solver learned something new: the note still read
+       "TODAcor 1 401 m" beside a label reading "Limit · ASD field" whose 5 044 kg came
+       from ASDAcor 1 012 m, telling a pilot accelerate-stop had 1 401 m when it had
+       1 012. Everything downstream now reads these fields. */
+    const fieldAvail = { TOD: ["TODAcor", todaCor], ASD: ["ASDAcor", asda], TOR: ["TORAcor", toraCor] };
+    /* How much the limit moves per 1 % of the available distance. The weight solve is
+       an inverse read off a shallow curve — on a short runway the ASD-vs-weight gradient
+       is only ~95 m per 1 000 kg, so a 10 m error in ASDAcor shifts the answer by ~160 kg.
+       Fig. 5-20 is validated to ±1.7 %, so a kilogram-precise RTOW overstates what the
+       chart can support. Reporting the rate is more honest than more decimal places. */
+    const fieldSens = (() => {
+      const avail = (fieldAvail[fieldKind] || fieldAvail.TOD)[1];
+      if (!Number.isFinite(avail) || !Number.isFinite(fieldRaw)) return null;
+      const solveAt = (av) => {
+        let x = 3500, y = this.MTOW + 400;
+        const need = fieldKind === "ASD" ? ((w) => asdFullAt(w, v1).v)
+          : fieldKind === "TOR" ? ((w) => D14.torAt(tor5400, w, v1))
+          : ((w) => todFullAt(w, v1).v);
+        if (need(x) > av) return null;
+        if (need(y) <= av) return y;
+        for (let n = 0; n < 40; n++) { const m = (x + y) / 2; if (need(m) <= av) x = m; else y = m; }
+        return x;
+      };
+      const hi = solveAt(avail * 1.01), lo = solveAt(avail * 0.99);
+      if (hi === null || lo === null) return null;
+      return Math.round((hi - lo) / 2);
+    })();
+    const fieldLimit = {
+      kind: fieldKind,
+      availLabel: (fieldAvail[fieldKind] || fieldAvail.TOD)[0],
+      availV: Math.round((fieldAvail[fieldKind] || fieldAvail.TOD)[1] || 0),
+      sens: fieldSens,
+    };
+
+    /* WHICH limit falls below the 4 400 kg floor, with ITS OWN numbers. The no-solution
+       advisory used to print "TODR … exceeds TODAcor …" whenever fieldRaw was under the
+       floor, but fieldRaw is the minimum of the three field limits — so when ASD was the
+       failing one the message quoted TOD's figures, which sit comfortably inside
+       ("TODR 514 m at 4 400 kg exceeds TODAcor 950 m", a self-contradiction). Same defect
+       as the hardcoded "TOD field length" label: an identity asserted instead of derived. */
+    const floorFail = (() => {
+      if (!(fieldRaw < this.WMIN - 1)) return null;
+      const at = this.WMIN;
+      const rows = [["TODR", todFullAt(at, v1).v, todaCor, "TODAcor"]];
+      if (asd5400 !== null) rows.push(["ASDR", asdFullAt(at, v1).v, asda, "ASDAcor"]);
+      if (haveTor) rows.push(["TORR", D14.torAt(tor5400, at, v1), toraCor, "TORAcor"]);
+      const over = rows.filter((r) => r[1] > r[2] + 0.5);
+      if (!over.length) return null;
+      /* if several fail, name the one that misses by the most */
+      const w = over.reduce((p, q) => ((q[1] - q[2]) > (p[1] - p[2]) ? q : p));
+      return { req: w[0], reqV: Math.round(w[1]), availLabel: w[3], availV: Math.round(w[2]) };
+    })();
+
+    const xw = i.windKt * Math.sin(ang);
+    const hw = hwRaw;
+
+    /* flag anything read outside the charted envelope */
+    const ext = [];
+    /* EVERY caution goes through note(). Two reasons, both learned the hard way:
+
+       1. The design system requires a real minus sign (U+2212) on rendered numbers, and
+          the chart modules build their messages by concatenation — Number.toFixed() emits
+          U+002D, so "OAT -50 °C below the charted -20 °C" reached the screen while the
+          same app rendered "−50 °C" correctly two rows above via sgn(). Substituting at
+          this single choke point means a newly written message cannot regress, which
+          per-string fixes in nine modules could not guarantee.
+       2. The three carpets share OAT floors — Figs. 5-16 and 5-19 both stop at −20 °C —
+          so pushing each reason independently printed one sentence twice, verbatim, with
+          nothing to say which plate it came from. Reasons are split, de-duplicated and
+          attributed to the figures that share them.
+
+       The chart modules each report their own out-of-envelope condition, which is more
+       precise than the blanket ranges this app used to carry: the carpets know the stepped
+       ISA limit (ISA+35 to 8 000 ft, ISA+30 at 10 000, ISA+20 at 12 000) and Fig. 5-18
+       refuses rather than extrapolates where the AFM forbids it. */
+    /* BOTH of the design system's number rules, applied to module-authored text.
+
+       Minus: a LEADING minus only, preceded by start, whitespace or an opening paren. A
+       bare /-(?=\d)/ also rewrote figure references — "Fig. 5-13" became "Fig. 5−13" —
+       because the plate numbering is hyphenated. "ISA-" is handled separately since a
+       letter precedes it. En dashes in charted ranges ("0.50–0.45") are left alone.
+
+       Thousands: U+2009 into integer runs of four digits or more, so "12899 ft above the
+       charted 12000 ft" reads like the app's own "3 000 m" and "4 400 kg" beside it. The
+       4-digit floor is what keeps figure and plate references safe — "5-13", "5-19" and
+       "Tab 5/II" are one or two digits and cannot match — and decimals such as "38.8" or
+       "0.50" have no four-digit run either. Values the app formats itself already carry
+       the thin space, so their runs are at most three digits and are not re-split. */
+    const fmt = (s) => String(s)
+      .replace(/(^|[\s(])-(?=[\d.])/g, "$1\u2212")
+      .replace(/ISA-(?=\d)/g, "ISA\u2212")
+      .replace(/\d{4,}/g, (run) => run.replace(/\B(?=(\d{3})+$)/g, "\u2009"));
+    const note = (s) => { if (s) ext.push(fmt(s)); };
+
+    if (refusalReason) note(refusalReason);
+    /* carpet reasons: group identical causes and name the figures reporting them */
+    const carpetWhy = new Map();
+    [["Fig. 5-13", torR], ["Fig. 5-16", todR], ["Fig. 5-19", asdR]].forEach(([fig, r]) => {
+      if (!r || !r.extrapolated || !r.reason) return;
+      String(r.reason).split("; ").forEach((part) => {
+        const p = part.trim();
+        if (!p) return;
+        if (!carpetWhy.has(p)) carpetWhy.set(p, []);
+        carpetWhy.get(p).push(fig);
+      });
+    });
+    carpetWhy.forEach((figs, why) => {
+      const label = figs.length === 1 ? figs[0]
+        : "Figs. " + figs.map((f) => f.replace("Fig. ", "")).join(figs.length > 2 ? ", " : " and ");
+      note(`${label}: ${why}`);
+    });
+    if (paM > 3000) note("pressure altitude above the 3 000 m gradient read");
+    if (climbRaw < this.WMIN - 1 || fieldRaw < this.WMIN - 1) note("a limit falls below the charted 4 400 kg floor");
+    if (!haveAfm) note("AFM chart data failed to load — figures are not computed");
+    clampNotes.forEach(note);
+    /* THE RULE: ext[] carries ENVELOPE EXCEEDANCES EXCLUSIVELY, because it drives the
+       amber "Extrapolated" badge and that badge must mean one thing — "this entry left
+       the charted envelope". Nothing else belongs here, however true or important.
+
+       Two things have been removed from this list for breaking that rule. The Fig. 5-15
+       substitution was true on every successful computation, so the badge was permanently
+       lit; it is a standing limitation and lives in the derived "Known gaps" list. The
+       runway-surface coefficients were pushed here as a substitution warning while
+       Tab 5/II was missing, which was legitimate — but once Tab 5/II was transcribed the
+       text was rewritten into a plain record of the applied coefficients and left in
+       place, so any non-dry runway lit the badge. Applying an AFM surface coefficient is
+       an ordinary in-envelope computation, and for an operator whose normal case is
+       unpaved and contaminated strips that meant the badge was lit on most computations —
+       making a real OAT or pressure-altitude exceedance invisible again.
+
+       The coefficients are provenance, not extrapolation, and are already reported in
+       four places that carry no badge: surfaceCoefHint, todaCorHint2, the CSV export and
+       the surface-coefficient card in Chart reads. */
+
+    const todNow = todFull(weight);
+    return {
+      paFt, isaT, dev, daFt, paM, daM, g6600, k, gradAt, climb, climbRaw,
+      kS, kSA, todaCor, tod5400, todAt, field, fieldRaw, rtow, weight, check,
+      haveTor, tor5400, toraCor, torLim, torr: haveTor ? D14.torAt(tor5400, weight, v1) : null,
+      torExt: torR && torR.extrapolated, torExtWhy: torR ? torR.reason : "",
+      climbBinds, fieldBinds, binds, bindsShort, fieldKind, asdIsBinding, todLim, asdLim,
+      slopeC: slopeC.v, windC, afterSlope, afterWind, slopeOff: slopeC.off,
+      v1, v1Balanced, wBalanced, v1Irrelevant, v1NoFit, v1Best, wBest, rtowBest, rtowAtSched, v1Gain,
+      asda, asd5400, asdr: asdFull(weight),
+      refused, refusalReason, haveAfm, todExt: todR && todR.extrapolated,
+      asdExt: asdR && asdR.extrapolated,
+      todExtWhy: todR ? todR.reason : "", asdExtWhy: asdR ? asdR.reason : "",
+      maxOat: todR ? todR.maxOat : null, isaDev: todR ? todR.isaDev : dev,
+      gw: todNow.gw, fv: todNow.fv, todOff: todNow.off,
+      todClampC: todNow.clampC, todCarrier: todNow.carrier,
+      xw, hw, ext, grad: gradAt(weight), todr: todAt(weight),
+      exceeds: todAt(weight) > todaCor + 1,
+      overRtow: check && i.tow > rtow + 1,
+      /* no weight in the charted 4 400 … 6 600 kg band satisfies both limits */
+      fieldLimit, v1Basis, v1RateKgKt, incomputable, v1BalancedOverVr, v1Mode, v1Manual,
+      rtowAtSel, rtowWorst,
+      floorFail,
+      noSolution: Math.min(fieldRaw, climbRaw) < this.WMIN - 1,
+    };
+  }
+  /* A carpet read for the CHART/TABLE axes, which are drawn at round ISA deviations.
+     ISA+35 lands a few hundredths past the tabulated envelope edge purely from the
+     1.98 °C/1000 ft lapse arithmetic (46.04 vs 46.0 at 2 000 ft), and testing
+     `extrapolated` directly threw away four points the pilot had actually read off the
+     plate — collapsing the ISA+35 curve to a single sea-level dot. Clamp to the edge
+     and only report "off chart" when genuinely past it. */
+  chartRead(paFt, dev) {
+    const M = window.PG_FIG516;
+    if (!M) return null;
+    const oat = 15 - 1.98 * (paFt / 1000) + dev;
+    const lim = M.maxOat(paFt);
+    if (oat > lim + 0.25) return null;
+    return M.todRequired(paFt, Math.min(oat, lim)).tod;
+  }
+  rtowFor(i) {
+    const s = this.solve(i);
+    return Math.min(s.field, s.climb, this.MTOW);
+  }
+
+  set(k, v) { this.setState((s) => ({ draft: { ...s.draft, [k]: v } })); }
+  /* Designators are always two digits — "RWY 7" is not a valid one. A dataset end is
+     already padded ("07"); a manually entered rwyId is a bare number. */
+  rwyTag(x) {
+    if (x.rwyEnd) return String(x.rwyEnd);
+    const n = this.num(x.rwyId);
+    return Number.isFinite(n) ? String(Math.round(n)).padStart(2, "0") : "—";
+  }
+
+  renderVals() {
+    const i = this.state.committed, d = this.state.draft, s = this.solve(i);
+    const F = this.f.bind(this), tab = this.state.tab, view = this.state.view;
+    const dirty = JSON.stringify(i) !== JSON.stringify(d);
+    const set = (k) => (v) => this.set(k, v);
+    const flap18 = i.flap === "18";
+    const climbBinds = s.climbBinds, fieldBinds = s.fieldBinds, limitName = s.binds;
+    const oats = [-20, -10, 0, 10, 20, 30, 40, 50];
+    const pas = [0, 2000, 4000, 6000, 8000];
+    const xwAbs = Math.abs(s.xw);
+    /* one off-chart-aware phrasing, shared by the StatBlocks and the advisory */
+    const limitPhrase = (raw, clamped) => raw > this.MTOW + 1
+      ? "above 6 600 kg (not limiting)"
+      : raw < this.WMIN - 1 ? "below the charted 4 400 kg floor" : `${F(clamped)} kg`;
+    const limitShort = (raw, clamped) => raw > this.MTOW + 1
+      ? "> 6 600" : raw < this.WMIN - 1 ? "< 4 400" : F(clamped);
+    const devLabel = (v) => (!Number.isFinite(this.num(v)) ? "\u2014" : v === 0 ? "ISA" : `ISA${this.sgn(v)}`);
+    const apt = this.apt(d.icao);
+    const locked = !!apt;
+    /* lock only what the dataset can actually fill — many aerodromes carry no runway
+       record at all, and a few carry no elevation */
+    const lockElev = locked && apt.elev !== null;
+    const lockRwy = locked && apt.runways.length > 0;
+    const dbCount = this.state.db ? this.state.db.AIRPORTS.length : 0;
+    /* the computed case sits on the committed inputs, so warn off those */
+    const surfWarn = !!i.rwySurf && i.rwySurf !== "Paved";
+    /* a blank field is a figure the dataset could not supply and nobody has typed;
+       nothing is computed until every one is filled */
+    const blank = (v) => !Number.isFinite(this.num(v));
+    const missing = [
+      ["airfield elevation", i.elev], ["TODA", i.toda], ["TORA", i.tora],
+      ["ASDA", i.asda], ["runway slope", i.slope], ["runway designator", i.rwyId],
+    ].filter(([, v]) => blank(v)).map(([n]) => n);
+    const narrow = this.state.vw < 900;
+    const narrowNow = () => this.state.vw < 900;
+    /* The label-shortening decision must follow the COLUMN the labels render in, not the
+       viewport. Wide layout spends 56 px on the icon rail and 340 px on the input panel
+       plus padding, so a 924 px viewport leaves the results column about 528 px — and
+       keying off `narrow` (vw < 900) chose the long labels for a column too narrow to
+       hold them, ellipsising them from roughly 900 to 1200 px. */
+    const colW = narrow ? this.state.vw - 32 : this.state.vw - 56 - 340 - 64;
+    const tightCol = colW < 620;
+    /* Range facts are READ FROM THE MODULES, never written as literals. Every one of
+       these hints had drifted from the data at least once — "charted ±1.5 %" while
+       Fig. 5-18 covers ±2 %, "to 13 120 ft" while the plotted carpet stops at 12 000 —
+       because a literal cannot follow the tables when they change. */
+    const R = (() => {
+      const c = window.PG_FIG516, w = window.PG_FIG518;
+      const paMax = c && c.ROWS ? Math.max(...c.ROWS.map((r) => r.pa)) : null;
+      return {
+        paMax,
+        slopeMin: w ? w.SLOPE_PCT[0] : null,
+        slopeMax: w ? w.SLOPE_PCT[w.SLOPE_PCT.length - 1] : null,
+        tailMax: w ? -w.WIND_KT[0] : null,
+        headMax: w ? w.MAX_HEADWIND : null,
+      };
+    })();
+    /* Chart availability, derived from module presence and consumed by the field hints
+       below. This was previously computed lower down in renderVals as `chartsAvail` and
+       never bound to anything — dead code, while the TORA and ASDA hints kept their
+       hardcoded "not read" literals and contradicted the live TORR and ASDR rows. */
+    const avail = (() => {
+      const torCarpet = !!window.PG_FIG513;
+      const torWeight = !!(window.PG_FIG514 && window.PG_FIG514.weightPanelAvailable);
+      const asdOk = !!(window.PG_FIG519 && window.PG_FIG520);
+      return {
+        torCarpet, torWeight, asd: asdOk, torUsable: torCarpet && torWeight,
+        toraHint: torCarpet && torWeight ? (window.PG_FIG512 ? "Drives the TOR field limit · Fig. 5-12" : "Drives the TOR field limit")
+          : torCarpet ? "Recorded · TOR weight panel not read"
+          : "Recorded · TOR not read",
+        asdaHint: asdOk ? "Drives the ASD field limit" : "Recorded · ASD not read",
+      };
+    })();
+    const elevHint = lockElev ? "From dataset"
+      : R.paMax ? `Charted to ${F(R.paMax)} ft pressure altitude` : "From the AFM carpets";
+    const windDirHint = this.num(d.windKt) === 0 ? "Calm — no wind correction" : "Magnetic · direction wind is from";
+    const todaHint = lockRwy ? "Physical length · no clearway" : "Drives the field limit";
+    const slopeHint = lockRwy ? "From threshold elevations"
+      : R.slopeMax ? `Uphill positive · charted ${this.sgn(R.slopeMin, 0)}…${this.sgn(R.slopeMax, 0)} %` : "Uphill positive";
+    /* One numeric-field descriptor. dec is the number of decimals the value snaps to,
+       which keeps 0.05 steps off 1.9999… and 0.1 slope steps clean. */
+    const fld = (label, hint, key, unit, disabled = false) => {
+      const { step, min, max, wrap = 0 } = this.FIELD_RANGE[key];
+      /* clampField handles the wrap fields — compass and runway designators roll round
+         rather than clamping, so stepping below the first value reaches the last */
+      const put = (v) => this.set(key, this.clampField(key, v));
+      const cur = () => {
+        const n = this.num(this.state.draft[key]);
+        return Number.isFinite(n) ? n : min;
+      };
+      const raw = this.num(d[key]);
+      return {
+        label, hint, unit, step, min, max, disabled,
+        /* the design system's disabled state: 0.4 opacity plus not-allowed */
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+        value: d[key],
+        /* TYPING DOES NOT CLAMP. It used to, and that made the runway fields keyboard-proof:
+           TODA has min 400, so the first keystroke of "1450" was clamped to 400 before the
+           second arrived, and the value could only be reached with the steppers. Wind and
+           gradient appeared to work only because their minima are 0 and −2, low enough that
+           intermediate keystrokes survived. The draft now holds exactly what was typed and
+           Compute clamps it — which is what the draft/committed split is for. Out-of-range
+           values show the field's invalid border in the meantime. */
+        set: (v) => (v === "" ? this.set(key, "") : this.set(key, this.num(v))),
+        invalid: Number.isFinite(raw) && !wrap && (raw < min || raw > max),
+        up: () => { if (!disabled) put(cur() + step); },
+        down: () => { if (!disabled) put(cur() - step); },
+      };
+    };
+    const aptC = this.apt(i.icao);
+    const partial = !!aptC && (!aptC.runways.length || aptC.elev === null);
+    const partialNoteText = partial
+      ? `${aptC.icao} carries ${!aptC.runways.length ? "no runway record" : ""}${!aptC.runways.length && aptC.elev === null ? " and " : ""}${aptC.elev === null ? "no published elevation" : ""} in the dataset. The ${!aptC.runways.length ? "runway figures" : "elevation"} in this solution were typed in by hand, not read from it.`
+      : "";
+
+    return {
+      /* ---- inputs ---- */
+      elev: d.elev, oat: d.oat, qnh: d.qnh, rwyId: d.rwyId, toda: d.toda, tora: d.tora,
+      asda: d.asda, slope: d.slope, surface: d.surface, windDir: d.windDir, windKt: d.windKt,
+      flap: d.flap, tow: d.tow, reqNet: d.reqNet, mode: this.state.mode, tab,
+      setElev: set("elev"), setOat: set("oat"), setQnh: set("qnh"), setRwyId: set("rwyId"),
+      setToda: set("toda"), setTora: set("tora"), setAsda: set("asda"),
+      setSlope: (v) => this.set("slope", Math.round(Number(v) * 10) / 10),
+      setSurface: set("surface"), setWindDir: set("windDir"), setWindKt: set("windKt"),
+      /* ---- aerodrome lookup ---- */
+      icao: d.icao,
+      setIcao: (e) => {
+        const v = String(e.target.value || "").toUpperCase().slice(0, 4);
+        const hit = this.apt(v);
+        if (hit) this.applyApt(hit, "");
+        else this.set("icao", v);
+      },
+      pickApt: (code) => { const a = this.apt(code); if (a) this.applyApt(a, ""); },
+      suggestions: (this.state.db && !apt && d.icao !== "ZZZZ" ? this.state.db.searchAirports(d.icao) : [])
+        .map((a) => ({ icao: a.icao, name: `${a.name} · ${a.municipality || a.country}`, pick: () => this.applyApt(a, "") })),
+      surfaceHint: d.rwySurf && d.rwySurf !== "Paved"
+        ? `Dataset says ${d.rwySurf.toLowerCase()} — confirm`
+        : "Tab 5/I ÷ TODA · Tab 5/II ÷ ASDA",
+      hasSuggestions: !!(this.state.db && !apt && d.icao !== "ZZZZ" && this.state.db.searchAirports(d.icao).length),
+      locked, isManual: !lockRwy, lockElev, lockRwy, hasEnds: lockRwy,
+      gapNote: !locked ? "" : [
+        apt.runways.length ? "" : "no runway record — enter the runway, designator and slope by hand",
+        apt.elev === null ? "no published elevation — enter it by hand" : "",
+      ].filter(Boolean).join("; "),
+      hasGap: locked && (!apt.runways.length || apt.elev === null),
+      aptTitle: apt
+        ? `${apt.name}${apt.municipality && apt.municipality !== apt.name ? ` · ${apt.municipality}` : ""} · ${apt.country}`
+        : d.icao === "ZZZZ" ? "Manual entry"
+        : `Not in this ${dbCount}-aerodrome list — the code may still be valid. Enter ZZZZ to type the aerodrome in.`,
+      aptTone: apt ? "go" : d.icao === "ZZZZ" ? "neutral" : "caution",
+      aptBadge: apt ? "Dataset" : d.icao === "ZZZZ" ? "Manual" : "Not listed",
+      /* F() for the thin-space thousands separator — the design system requires it on
+         every rendered number, and 2 014 sat two rows above a formatted "4 520 ft". */
+      icaoHint: dbCount ? `${F(dbCount)} African aerodromes · ZZZZ for manual` : "ZZZZ for manual entry",
+      rwyEnd: d.rwyEnd,
+      endOptions: apt ? this.state.db.endsOf(apt).map((e) => ({
+        value: e.end,
+        label: `RWY ${e.end} · ${this.f(e.len)} m · ${this.dec(e.slope, 1)} %${e.surface === "Paved" ? "" : ` · ${e.surface.toLowerCase()}`}`,
+      })) : [],
+      setRwyEnd: (v) => { if (apt) this.applyApt(apt, v); },
+      resetManual: () => this.setState((st) => ({ draft: { ...st.draft, icao: "ZZZZ", rwyEnd: "", rwySurf: "" } })),
+      surfNote: surfWarn
+        ? `Runway surface is ${i.rwySurf.toLowerCase()} in the dataset. Tab 5/I is set to ${i.surface.toLowerCase()} at ${(this.SURF[i.surface] ?? 1).toFixed(2)} — confirm the condition and change it if it does not match.`
+        : "",
+      hasSurfNote: surfWarn,
+      setFlap: set("flap"), setTow: set("tow"),
+      /* 0.05 steps, snapped to 2 decimals — float steppers otherwise drift to 1.9999… */
+      setReqNet: (v) => this.set("reqNet", this.clampField("reqNet", v)),
+      /* the NumberField's own steppers are half the touch minimum when stacked, so on a
+         phone they are replaced by two full-height buttons */
+      reqNetUp: () => this.set("reqNet", this.stepField("reqNet", 1, d.reqNet)),
+      reqNetDown: () => this.set("reqNet", this.stepField("reqNet", -1, d.reqNet)),
+      reqNetUpLive: () => this.bumpReqNet(this.FIELD_RANGE.reqNet.step),
+      reqNetDownLive: () => this.bumpReqNet(-this.FIELD_RANGE.reqNet.step),
+      /* on the 2nd-segment tab the field edits the live solution, no Compute needed */
+      setReqNetLive: (v) => this.setState((st) => {
+        const r = this.clampField("reqNet", v);
+        return { draft: { ...st.draft, reqNet: r }, committed: { ...st.committed, reqNet: r } };
+      }),
+      setMode: (v) => this.setState({ mode: v }), setTab: (v) => this.setState({ tab: v }),
+      modeOptions: [{ value: "solve", label: "Solve RTOW" }, { value: "check", label: "Check weight" }],
+      /* ---- V1 basis ---- */
+      v1ModeOptions: [
+        { value: "sched", label: `Schedule ${this.V1_SCHED}` },
+        { value: "afm", label: "AFM best" },
+        { value: "manual", label: "Manual" },
+      ],
+      v1Mode: d.v1Mode || "sched",
+      setV1Mode: set("v1Mode"),
+      isManualV1: (d.v1Mode || "sched") === "manual",
+      v1ModeHint: (d.v1Mode || "sched") === "sched"
+        ? `Operator practice · RTOW quoted at V1 ${this.V1_SCHED}`
+        : (d.v1Mode || "sched") === "afm"
+        ? "Base AFM p. 10 method · V1 read from the graphs"
+        : `Crew-entered · clamped to Vmcg ${this.VMCG} … VR ${this.VR_SCHED}`,
+      v1Manual: d.v1Manual,
+      setV1Manual: (v) => this.set("v1Manual", this.clampField("v1Manual", v)),
+      v1ManualUp: () => this.set("v1Manual", this.stepField("v1Manual", 1, d.v1Manual)),
+      v1ManualDown: () => this.set("v1Manual", this.stepField("v1Manual", -1, d.v1Manual)),
+      v1ManualHint: `Vmcg ${this.VMCG} … VR ${this.VR_SCHED}`,
+
+      flapOptions: [{ value: "18", label: "Flap 18°" }, { value: "0", label: "Flap 0°" }],
+      surfaceOptions: Object.keys(this.SURF),
+      /* ---- numeric fields: one descriptor per row, − left and + right at the
+         field's own height, so every value steps the same way on every screen ---- */
+      elevHint, todaHint, slopeHint,
+      stepW: narrow ? "48px" : "32px",
+      fieldH: narrow ? "48px" : "26px",
+      stepIcon: narrow ? 18 : 13,
+      atmoFields: [
+        fld("Airfield elevation", elevHint, "elev", "ft", lockElev),
+        fld("OAT", "Placard −50 … +50 °C", "oat", "°C"),
+        fld("QNH", "hPa", "qnh", "hPa"),
+      ],
+      rwyFields: [
+        ...(lockRwy ? [] : [fld("Designator", "Magnetic ×10", "rwyId", "")]),
+        fld("TODA", todaHint, "toda", "m", lockRwy),
+        fld("TORA", avail.toraHint, "tora", "m", lockRwy),
+        fld("ASDA", avail.asdaHint, "asda", "m", lockRwy),
+        fld("Slope", slopeHint, "slope", "%", lockRwy),
+      ],
+      windFields: [
+        fld("Wind direction", windDirHint, "windDir", "°"),
+        fld("Wind speed", (R.headMax ? `Charted ${this.sgn(-R.tailMax, 0)} … ${this.sgn(R.headMax, 1)} kt component` : "Reported component"), "windKt", "kt"),
+      ],
+      cfgFields: [
+        fld("Required net gradient", "2nd segment · operator policy", "reqNet", "%"),
+        ...(this.state.mode === "check"
+          ? [fld("Take-off weight", "Charted 4 400 … 6 600 kg", "tow", "kg")]
+          : []),
+      ],
+      /* ---- layout: one column and a tab bar below the iPad's split width ---- */
+      narrow, isWide: !narrow,
+      rootDir: narrow ? "column" : "row",
+      innerDir: narrow ? "column" : "row",
+      panelW: narrow ? "100%" : "var(--panel-w)",
+      panelFlex: narrow ? "1 1 auto" : "0 0 auto",
+      panelBorder: narrow ? "0" : "1px solid var(--border-hairline)",
+      innerOverflow: "hidden",
+      /* narrow: the panel and the results are separate views reached from the tab bar —
+         stacked in one scroller they buried each other on a phone */
+      isCalcArea: view === "calc" || view === "input",
+      showPanel: narrow ? view === "input" : view === "calc",
+      showResults: view === "calc",
+      contentPad: narrow ? "var(--space-5)" : "var(--space-7)",
+      ctlSize: narrow ? "touch" : "sm",
+      btnSize: narrow ? "touch" : "md",
+      tabBarPad: "calc(var(--space-4) + env(safe-area-inset-bottom))",
+      railDisplay: narrow ? "none" : "flex",
+      chipDisplay: narrow ? "none" : "flex",
+      refBadge: narrow ? "Reference only" : "Reference only — not approved",
+      topbarGap: narrow ? "var(--space-3)" : "var(--space-5)",
+      topbarPad: narrow ? "var(--space-4)" : "var(--space-6)",
+      navItems: [
+        ["input", "sliders-horizontal", "Input", view === "input", () => this.setState({ view: "input" })],
+        ["takeoff", "calculator", "Result", view === "calc" && tab !== "chart", () => this.setState({ view: "calc", tab: "takeoff" })],
+        ["chart", "chart-line", "Charts", view === "calc" && tab === "chart", () => this.setState({ view: "calc", tab: "chart" })],
+        ["reads", "ruler", "Reads", view === "reads", () => this.setState({ view: "reads" })],
+        ["fleet", "plane", "Limits", view === "fleet", () => this.setState({ view: "fleet" })],
+      ].map(([id, icon, label, sel, on]) => ({
+        id, icon, label, on, color: sel ? "var(--accent)" : "var(--text-faint)",
+      })),
+      isCheck: this.state.mode === "check",
+      isFlap18: flap18, isFlap0: !flap18,
+      isReady: flap18 && !missing.length,
+      hasMissing: flap18 && missing.length > 0,
+      missingTitle: `${missing.length} aerodrome ${missing.length === 1 ? "figure" : "figures"} not supplied`,
+      missingNote: `The dataset holds no ${missing.join(", ")} for ${aptC ? aptC.icao : "this aerodrome"}. Type ${missing.length === 1 ? "it" : "them"} into the panel and press Compute — nothing is carried over from the aerodrome selected before.`,
+      hasPartial: partial && !missing.length,
+      partialNote: partialNoteText,
+
+      /* ---- navigation ---- */
+      isCalc: view === "calc", isReads: view === "reads", isFleet: view === "fleet", isHistory: view === "history",
+      isCalcRail: (view === "calc" || view === "input") && tab !== "chart",
+      isChartRail: view === "calc" && tab === "chart",
+      goCalc: () => this.setState({ view: "calc", tab: "takeoff" }),
+      goCharts: () => this.setState({ view: "calc", tab: "chart" }),
+      /* on a phone the topbar carries what the 5-item tab bar cannot */
+      goHistoryTop: () => this.setState({ view: "history" }),
+      goReads: () => this.setState({ view: "reads" }),
+      goFleet: () => this.setState({ view: "fleet" }),
+      goHistory: () => this.setState({ view: "history" }),
+      theme: this.state.theme, isLight: this.state.theme === "light",
+      themeLabel: this.state.theme === "light" ? "Night theme" : "Daylight theme",
+      toggleTheme: () => this.setState((st) => ({ theme: st.theme === "light" ? "dark" : "light" })),
+      isTakeoff: tab === "takeoff", isClimb: tab === "climb", isChart: tab === "chart",
+      tabItems: [{ id: "takeoff", label: "Take-off" }, { id: "climb", label: "2nd segment" }, { id: "chart", label: "Charts" }],
+      stamp: this.state.stamp,
+      dirtyTone: dirty ? "caution" : "go", dirtyLabel: dirty ? "Not computed" : "Current",
+      exportCsv: () => {
+        const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+        /* a missing figure is exported as "not supplied", never as a fabricated zero,
+           and no result section is written for a case that cannot be computed */
+        const val = (v, dp) => (!Number.isFinite(this.num(v)) ? "not supplied"
+          : dp === undefined ? Math.round(this.num(v)) : this.num(v).toFixed(dp));
+        const rows = [
+          ["L 410 UVP-E20 (GE H75-200) take-off performance"],
+          ["REFERENCE ONLY - NOT APPROVED FOR FLIGHT USE. Flaps 18 deg."],
+          ["Source: H75-200 supplement Figs. 5-12 to 5-20, AFM Tab 5/I and 5/II. Slope and wind applied."],
+          [], ["Input", "Value", "Unit"],
+          ["ICAO", i.icao, aptC ? aptC.name : "manual entry"],
+          ["Airfield elevation", val(i.elev), "ft"], ["OAT", val(i.oat), "degC"], ["QNH", val(i.qnh), "hPa"],
+          ["Runway", this.rwyTag(i), ""], ["TODA", val(i.toda), "m"], ["TORA", val(i.tora), "m"], ["ASDA", val(i.asda), "m"],
+          ["Surface", i.surface, `Tab 5/I ${s.kS.toFixed(2)} · Tab 5/II ${s.kSA.toFixed(2)}`],
+          ["Slope", val(i.slope, 1), "%"],
+          ["Wind", `${val(i.windDir)}/${val(i.windKt)}`, "deg/kt"],
+          ["Flaps", i.flap, "deg"], ["Required net gradient", val(i.reqNet, 2), "%"],
+        ];
+        if (missing.length) {
+          rows.push([], ["NOT COMPUTED", `${missing.join(", ")} not supplied`, ""]);
+        } else {
+          rows.push(
+            [], ["Result", "Value", "Unit"],
+            ["Pressure altitude", val(s.paFt), "ft"],
+            ["ISA deviation", val(s.dev, 1), "degC"],
+            ["Density altitude", val(s.daFt), "ft"],
+            ["Slope correction", this.dec(s.slopeC, 3), "x TODA"],
+            ["Wind correction", this.dec(s.windC, 3), "x TODA"],
+            ["TODA corrected", val(s.todaCor), "m"],
+            ["TOD required at 5400 kg", val(s.tod5400), "m"],
+            ["Net gradient at 6600 kg", val(s.g6600, 2), "%"],
+            ["Mass effect", val(s.k, 2), "%/1000kg"],
+            [`Limit - ${s.fieldLimit.kind} field length`, s.fieldRaw > this.MTOW ? "above 6600" : val(s.field), "kg"],
+            [`${s.fieldLimit.availLabel}`, val(s.fieldLimit.availV), "m"],
+            ["Limit - OEI 2nd segment", s.climbRaw > this.MTOW ? "above 6600" : val(s.climb), "kg"],
+            ["Limit - structural", this.MTOW, "kg"],
+            ["RTOW", s.noSolution ? "no solution in 4400-6600 kg range" : val(s.rtow), s.noSolution ? "" : "kg"],
+            ["Limiting factor", s.noSolution ? "below charted floor" : limitName, ""],
+            ["TODR at weight", val(s.todr), "m"],
+            ["Net gradient at weight", val(s.grad, 2), "%"],
+            /* the V1 ACTUALLY USED, since every distance in this export was computed at
+               it; the schedule is kept as its own row so both are on the record */
+            [`V1 used (${s.v1Basis.label})`, s.v1Basis.text, "KIAS"],
+            ["V1 operator schedule", this.V1_SCHED, "KIAS"],
+            ["VR (operator schedule)", this.VR_SCHED, "KIAS"],
+            ["V2", this.V2, "KIAS"], ["Vmca", this.VMCA, "KIAS"], ["Vmcg", this.VMCG, "KIAS"],
+            ["TORR", s.torr === null ? "not read" : val(Math.round(s.torr)), "m"],
+            ["TORAcor", s.toraCor === null ? "not read" : val(Math.round(s.toraCor)), "m"],
+            ["Limit - TOR field length", s.torLim == null ? (window.PG_FIG514 && window.PG_FIG514.weightPanelAvailable ? "no solution" : "not read") : (s.torLim > this.MTOW ? "above 6600" : val(Math.round(s.torLim))), "kg"],
+          );
+          if (s.ext.length) rows.push(["Extrapolated", s.ext.join("; "), ""]);
+          if (partial) rows.push(["Partial dataset record", partialNoteText, ""]);
+        }
+        if (s.ext.length) rows.push([], ["Extrapolation", s.ext.join("; ")]);
+        const csv = rows.map((r) => r.map(q).join(",")).join("\r\n");
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+        a.download = `rtow-${i.elev}ft-${i.oat}C-flap${i.flap}.csv`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      },
+      compute: () => this.setState((st) => {
+        /* Clamp and round here, not on every keystroke — see the note in fld(). Bounds come
+           from this.FIELD_RANGE, the same declaration the steppers and the invalid border
+           read, so there is no second copy to drift. */
+        const d2 = { ...st.draft };
+        Object.keys(this.FIELD_RANGE).forEach((k) => {
+          const n = this.num(d2[k]);
+          if (!Number.isFinite(n)) return;
+          d2[k] = this.clampField(k, n);
+        });
+        /* a case with a missing figure is not computable, so it is not recorded —
+           a history row asserting a limiting factor for it would be a fabrication */
+        const gaps = ["elev", "toda", "tora", "asda", "slope", "rwyId"]
+          .filter((k) => !Number.isFinite(this.num(d2[k])));
+        /* a case with a gap stays on the input view so the missing field can be typed */
+        /* draft carries the clamped values back so the boxes show what was computed */
+        const next = { draft: d2, committed: d2, stamp: this.now() };
+        if (gaps.length) return { ...next, view: narrowNow() ? "input" : "calc" };
+        const sol = this.solve(d2);
+        const entry = {
+          time: this.now().replace("Computed ", ""),
+          icao: d2.icao,
+          rwy: this.rwyTag(d2),
+          cond: `${F(d2.elev)} ft · ${this.sgn(d2.oat)} °C · ${d2.qnh}`,
+          toda: `${F(d2.toda)} m`,
+          flap: `${d2.flap}°`,
+          rtow: d2.flap !== "18" ? "—" : sol.noSolution ? "none" : F(sol.rtow),
+          lim: d2.flap !== "18" ? "Not read" : sol.noSolution ? "Below floor" : sol.bindsShort,
+        };
+        /* on a phone Compute must also bring the results view forward */
+        return { ...next, view: "calc", history: [entry].concat(st.history).slice(0, 20) };
+      }),
+
+      /* ---- panel readouts ---- */
+      paText: F(s.paFt), devText: this.sgn(s.dev, 1),
+      paHint: missing.includes("airfield elevation")
+        ? "Elevation not supplied"
+        : `Elevation ${F(i.elev)} ft · QNH ${i.qnh} hPa`,
+      conditionLine: missing.length
+        ? `${aptC ? aptC.icao : "Manual"} · ${missing.length} ${missing.length === 1 ? "figure" : "figures"} not supplied · flaps ${i.flap}°`
+        : `RWY ${this.rwyTag(i)} · ${F(i.elev)} ft · ${this.sgn(i.oat)} °C · ${i.qnh} hPa · ${devLabel(Math.round(s.dev))} · flaps ${i.flap}°`,
+
+      /* ---- verdict ---- */
+      verdictTone: s.noSolution || s.exceeds || s.overRtow ? "limit" : s.ext.length ? "caution" : "go",
+      /* the limiting factor is always named first; extrapolation is additive */
+      /* An incomputable case must NOT name a limiting factor. With a required field
+         cleared every downstream figure is NaN, yet this read "Structural MTOW limits this
+         take-off" — precisely the fabrication compute() refuses to record in history. */
+      verdictTitle: s.incomputable.length
+        ? "Enter " + s.incomputable.map((k) => ({ elev: "airfield elevation", oat: "OAT", qnh: "QNH", toda: "TODA", tora: "TORA", asda: "ASDA", slope: "runway slope" }[k] || k)).join(", ")
+        : s.noSolution
+        ? "No take-off weight in the charted range"
+        : s.exceeds
+        ? "TODR exceeds the corrected runway"
+        : s.overRtow ? "Take-off weight above RTOW"
+        : `${limitName} limits this take-off`,
+      verdictBody: s.noSolution
+        ? `Nothing between 4 400 and 6 600 kg satisfies both limits here. ${s.floorFail ? `${s.floorFail.req} ${F(s.floorFail.reqV)} m at 4 400 kg exceeds ${s.floorFail.availLabel} ${F(s.floorFail.availV)} m` : `Net gradient ${this.dec(s.gradAt(this.WMIN), 2)} % at 4 400 kg is below the required ${this.dec(i.reqNet, 2)} %`}. The required weight falls below the chart floor, which the reads do not cover.`
+        : s.exceeds
+        ? `TODR ${F(s.todr)} m at ${F(s.weight)} kg exceeds TODAcor ${F(s.todaCor)} m. Reduce weight to ${F(s.rtow)} kg.`
+        : s.overRtow ? `Entered ${F(i.tow)} kg exceeds RTOW ${F(s.rtow)} kg — ${limitName} limited. Reduce weight by ${F(i.tow - s.rtow)} kg.`
+        : limitName === "Structural MTOW"
+          ? `RTOW 6 600 kg — neither the runway nor the climb limits this take-off. TODR ${F(s.todr)} m against TODAcor ${F(s.todaCor)} m, net gradient ${this.dec(s.grad, 2)} % against ${this.dec(i.reqNet, 2)} % required.`
+          : `RTOW ${F(s.rtow)} kg. ${s.fieldLimit.kind} field limit ${limitPhrase(s.fieldRaw, s.field)}, OEI 2nd segment limit ${limitPhrase(s.climbRaw, s.climb)}, structural 6 600 kg.`,
+      extNote: s.ext.length ? `Extrapolated: ${s.ext.join("; ")}.` : "",
+      hasExt: s.ext.length > 0,
+
+      /* ---- RTOW card ---- */
+      rtowSubtitle: `Lowest of three limits · flaps 18° · ${s.v1Basis.label} V1 ${s.v1Basis.text} KIAS · required net gradient ${this.dec(i.reqNet, 2)} %`,
+      headlineLabel: s.check ? "Take-off weight" : "RTOW",
+      headlineValue: s.noSolution && !s.check ? "—" : F(s.weight),
+      headlineNote: s.noSolution
+        ? "No solution in the charted range"
+        : s.check
+        ? (s.overRtow ? `${F(i.tow - s.rtow)} kg above RTOW` : `${F(s.rtow - i.tow)} kg below RTOW`)
+        : `${limitName} limited`,
+      headlineStatus: s.noSolution || s.exceeds || s.overRtow ? "limit" : "accent",
+      /* a limit above 6 600 kg or below 4 400 kg is off the charted range — say so
+         rather than printing the clamp value, which reads as a real limit */
+      fieldText: limitShort(s.fieldRaw, s.field),
+      climbText: limitShort(s.climbRaw, s.climb),
+      fieldStatus: fieldBinds ? "caution" : "normal",
+      climbStatus: climbBinds ? "caution" : "normal",
+      mtowStatus: !climbBinds && !fieldBinds ? "caution" : "normal",
+      /* label and note now share one derivation, so they cannot name different plates */
+      /* The available distance AND, when the inverse read is steep, how much the answer
+         moves per 1 % of it — the chart is validated to ±1.7 %, so a bare kilogram figure
+         claims more than it can support. */
+      fieldNote: s.fieldRaw > this.MTOW + 1
+        ? `Not limiting · ${s.fieldLimit.availLabel} ${F(s.fieldLimit.availV)} m`
+        : s.fieldLimit.sens && s.fieldLimit.sens >= 50
+        ? `${s.fieldLimit.availLabel} ${F(s.fieldLimit.availV)} m · ±${F(s.fieldLimit.sens)} kg per 1 %`
+        : `${s.fieldLimit.availLabel} ${F(s.fieldLimit.availV)} m`,
+      climbNote: s.climbRaw > this.MTOW + 1
+        ? `Not limiting · ${this.dec(s.g6600, 2)} % at 6 600 kg`
+        : `${this.dec(s.g6600, 2)} % at 6 600 kg`,
+      mtowNote: s.noSolution ? "Unreachable here" : `${F(this.MTOW - s.rtow)} kg above RTOW`,
+      todaCor: Math.round(s.todaCor), todaCorV: Math.round(s.todaCor), todr: Math.round(s.todr),
+      gradVsReqHint: `Required ${this.dec(i.reqNet, 2)} %${s.check ? "" : " · RTOW sits on this limit"}`,
+
+      /* ---- V speeds ---- */
+      /* The subtitle asserted "operator schedule V1 81" unconditionally, which is now
+         only one of three bases. It names the selected one instead. */
+      vSubtitle: `Flaps 18° · ${F(s.weight)} kg · ${s.v1Basis.label} V1 ${s.v1Basis.text} · VR ${this.VR_SCHED} · V2 ${this.V2}`,
+      vspeeds: [
+        { name: "V1", value: s.v1Basis.text, status: "accent",
+          note: s.v1Basis.note },
+        { name: "VR", value: this.VR_SCHED, status: "accent", note: "Base AFM · fixed" },
+        { name: "V2", value: this.V2, note: "Base AFM climb chart" },
+        { name: "Vmca", value: this.VMCA, status: "caution", note: "Supplement placard" },
+        { name: "Vmcg", value: this.VMCG, status: "caution", note: "Base AFM" },
+      ],
+      /* the DataRow label ellipsises before its hint does, so the label stays short
+         at the widths where the two compete */
+      gradAtWLabel: tightCol ? "Net gradient" : "Net gradient at weight",
+      v1EffLabel: tightCol ? "V1 effect" : "V1 effect on TODR",
+      v1Note: s.v1Balanced === null
+        ? `×${this.dec(s.fv, 3)} vs ${this.V1_MAX} KIAS · no balanced crossing in ${this.V1_MIN}…${this.V1_MAX}`
+        : s.v1BalancedOverVr
+        ? `Balanced V1 ${this.v1Text(s.v1Balanced)} KIAS is above VR ${this.VR_SCHED} — not usable`
+        : `Balanced V1 ${this.v1Text(s.v1Balanced)} KIAS · schedule is ${s.v1 > s.v1Balanced ? "above" : "below"} it`,
+      v1Status: s.v1BalancedOverVr ? "caution"
+        : s.v1Balanced !== null && s.v1 > s.v1Balanced + 0.5 ? "caution" : "normal",
+      bestV1Label: tightCol ? "Best V1" : "Best V1 for weight",
+      /* the row compares the SELECTED V1 against the best available, so its label has
+         to name what is selected rather than always saying 81 */
+      penaltyLabel: tightCol ? `Cost of V1 ${s.v1Basis.text}` : `Payload cost of V1 ${s.v1Basis.text}`,
+      /* When RTOW is the same at every V1 the "best" one is meaningless — the tie rule
+         would otherwise report the lowest scanned speed as if it were a recommendation. */
+      balV1Text: s.v1NoFit ? "—" : s.v1Irrelevant ? "n/a" : this.v1Text(s.v1Best),
+      /* The hint MUST describe the value beside it. It used to fall to the balanced-field
+         branch whenever a TOD×ASD crossing existed anywhere in the scan, while the value
+         showed v1Best — two different speeds in one row. At 24 °C they nearly coincided
+         (77.3 against a 77.4 crossing) so it read plausibly; one degree warmer the
+         crossing rose above MTOW, the optimum moved to the 84 KIAS boundary, and the row
+         asserted "TOD and ASD cross at 5 666 kg" beside V1 84.0. The crossing is only
+         mentioned when it IS the optimum. */
+      balV1Hint: s.v1NoFit
+        ? `No V1 in ${this.V1_MIN}…${this.V1_USE_MAX} KIAS fits this runway at any weight`
+        : s.v1Irrelevant
+        ? `RTOW is ${F(Math.round(s.rtowBest))} kg at every V1 in ${this.V1_MIN}…${this.V1_USE_MAX} — ${s.binds} sets it`
+        : s.v1Best === null
+        ? "—"
+        : s.v1Balanced !== null && Math.abs(s.v1Best - s.v1Balanced) < 0.3
+        ? `Balanced field point · TOD and ASD cross at ${F(Math.round(Math.min(s.wBalanced, this.MTOW)))} kg`
+        : s.v1BalancedOverVr
+        ? `Capped at VR ${this.VR_SCHED} · the charted TOD/ASD crossing is V1 ${this.v1Text(s.v1Balanced)}, above VR`
+        : s.v1Best >= this.V1_USE_MAX - 0.01
+        ? `RTOW ${F(Math.round(s.rtowBest))} kg at VR ${this.VR_SCHED} · V1 cannot exceed VR`
+        : s.v1Best <= this.V1_MIN + 0.01
+        ? `RTOW ${F(Math.round(s.rtowBest))} kg at the ${this.V1_MIN} KIAS chart floor`
+        : `RTOW ${F(Math.round(s.rtowBest))} kg — best in ${this.V1_MIN}…${this.V1_USE_MAX} KIAS`,
+      penaltyText: s.v1NoFit ? "—" : s.v1Gain === null ? "—" : F(Math.round(s.v1Gain)),
+      penaltyHint: s.v1NoFit ? "Field too short at any V1"
+        : s.v1Gain === null ? `No solution at the ${s.v1Basis.label} V1`
+        : s.rtowAtSel === null
+          ? `V1 ${s.v1Basis.text} does not fit this runway — V1 ${this.v1Text(s.v1Best)} supports ${F(Math.round(s.rtowBest))} kg`
+        : s.v1Irrelevant
+          ? (s.fieldBinds ? `V1 ${s.v1Basis.text} is already optimal on this runway` : `${s.binds} limits before V1 can — V1 ${s.v1Basis.text} costs nothing`)
+        : `RTOW would be ${F(Math.round(s.rtowBest))} kg at V1 ${this.v1Text(s.v1Best)} instead of ${F(Math.round(s.rtowAtSel))} kg${s.v1RateKgKt ? ` · about ${F(s.v1RateKgKt)} kg per knot of V1 here` : ""}`,
+      penaltyStatus: s.v1NoFit || s.rtowAtSel === null ? "limit"
+        : (s.v1Gain !== null && s.v1Gain > 100) ? "caution" : "normal",
+      asdrText: s.asdr ? F(s.asdr.v) : "—",
+      /* ASDR had no status, so the abort case rendered in ordinary ink even at zero
+         margin — the one place a pilot looks for "can I stop". */
+      asdrStatus: !s.asdr ? "normal"
+        : s.asdr.v > s.asda + 1 ? "limit"
+        : s.asdr.v > s.asda - 25 ? "caution" : "normal",
+      asdaCorText: s.asd5400 === null ? "—" : F(s.asda),
+      /* Every required distance states its V1. Without it the card looked wrong: ASDR
+         1 148 m at 5 852 kg sat below "ASD at 5 400 kg 1 159 m", because the first is at
+         the schedule V1 81 and the second at the chart's V1 84 reference. The weight adds
+         65 m and the 3 kt of V1 removes 77 m, so the heavier figure is genuinely smaller —
+         but only the V1 makes that legible. At equal V1 the ordering never inverts. */
+      asdrHint: s.asd5400 === null ? "Supplement Fig. 5-19 not read" : `ASDAcor ${F(s.asda)} m · at V1 ${s.v1Basis.text}`,
+      wCorrText: this.dec(s.gw, 3), vCorrText: this.dec(s.fv, 3),
+      tod5400Text: s.tod5400 === null ? "—" : F(s.tod5400),
+      tod5400Hint: `Fig. 5-16 · reference 5 400 kg at V1 ${this.V1_MAX}`,
+      asd5400Text: s.asd5400 === null ? "—" : F(s.asd5400),
+      asd5400Hint: `Fig. 5-19 · reference 5 400 kg at V1 ${this.V1_MAX}`,
+
+      /* ---- distances ---- */
+      /* This said "still air, level" — false since Figs. 5-12, 5-15 and 5-18 were
+         digitised. Name what was actually applied, so the card cannot drift again. */
+      distSubtitle: `At ${F(s.weight)} kg · V1 ${s.v1Basis.text} · ${this.dec(i.slope, 1)} % slope · ${this.sgn(Math.round(s.hw), 0)} kt component`,
+      todrText: F(s.todr), todStatus: s.exceeds ? "limit" : "normal",
+      /* The TODR row's own available figure — always TODAcor, because the row IS TODR.
+         The binding-limit identity lives in s.fieldLimit and is used by the card. */
+      todaCorHint: `TODAcor ${F(Math.round(s.todaCor))} m · at V1 ${s.v1Basis.text}`,
+      /* One source for the binding-distance label; three views held their own copy and
+         kept saying "TOD field length" after solve() learned the difference. */
+      torrText: s.torr === null ? "—" : F(Math.round(s.torr)),
+      torrHint: s.torr === null ? "Supplement Fig. 5-14 weight panel not read"
+        : `TORAcor ${F(Math.round(s.toraCor))} m · at V1 ${s.v1Basis.text}`,
+      torrStatus: s.torr !== null && s.toraCor !== null && s.torr > s.toraCor + 1 ? "limit" : "normal",
+      tor5400Text: s.tor5400 === null ? "—" : F(Math.round(s.tor5400)),
+      tor5400Hint: `Fig. 5-13 · reference 5 400 kg at V1 ${this.V1_MAX}`,
+      fieldLimitLabel: tightCol ? `Limit · ${s.fieldLimit.kind} field` : `Limit · ${s.fieldLimit.kind} field length`,
+      hasAsdMeter: s.asd5400 !== null && Number.isFinite(s.asda),
+      /* The ASDR meter's available leg was bound to the "asda" key, which in THIS scope is the raw
+         ASDA input field (d.asda), not solve()'s corrected s.asda — a name collision, so
+         the bar sat on the declared distance and ignored slope, wind and the Tab 5/II
+         surface coefficient while the ASDR row below it moved correctly. The TODR meter
+         was never affected because its leg is named todaCor, which does not collide.
+         Distinct name, and both meters now take a *CorV key. */
+      asdaCorV: Math.round(s.asda),
+      asdrValue: s.asdr ? s.asdr.v : 0,
+      todaCorText: F(s.todaCor),
+      surfaceCoefText: this.dec(s.kS, 2),
+      surfaceCoefStatus: surfWarn ? "caution" : "normal",
+      surfaceCoefHint: surfWarn ? `${i.surface} · dataset says ${i.rwySurf.toLowerCase()}`
+        : `${i.surface} · Tab 5/I ${s.kS.toFixed(2)} · Tab 5/II ${s.kSA.toFixed(2)}`,
+      todaCorSrc: window.PG_FIG515 ? "Fig. 5-15" : "Fig. 5-18",
+      todaCorHint2: s.kS === s.kSA
+        ? `Slope, wind, then ÷ ${s.kS.toFixed(2)}`
+        : `Slope, wind · TODA ÷ ${s.kS.toFixed(2)}, ASDA ÷ ${s.kSA.toFixed(2)}`,
+
+      /* ---- wind ---- */
+      windSubtitle: `${String(i.windDir).padStart(3, "0")}° / ${i.windKt} kt · supplement Fig. 5-18`,
+      /* dec() not toFixed() — toFixed on a NaN prints the literal "NaN", which is how a
+         cleared elevation field put "NaN" on the wind/slope card. The class formatters all
+         return an em dash for a non-finite value; anything bypassing them re-opens that. */
+      slopeCText: this.dec(s.slopeC, 3), windCText: this.dec(s.windC, 3),
+      afterSlopeText: F(s.afterSlope), afterWindText: F(s.afterWind),
+      windAppliedText: this.pct(s.windC),
+      windAppliedStatus: s.windC < 1 ? "caution" : "normal",
+      slopeAppliedText: this.pct(s.slopeC),
+      slopeAppliedStatus: s.slopeC < 1 ? "caution" : "normal",
+      windTransform: `rotate(${(((i.windDir - i.rwyId * 10) % 360) + 360) % 360}deg)`,
+      windColor: xwAbs > 23 ? "var(--status-limit)" : xwAbs > 17 ? "var(--status-caution)" : "var(--accent)",
+      windHeadLabel: s.hw >= 0 ? "Headwind" : "Tailwind",
+      windHeadText: `${this.sgn(s.hw)} kt`,
+      /* a zero crosswind has no side — "0 kt R" reads as an orphaned glyph */
+      windXText: Math.round(s.xw) === 0 ? "0 kt" : `${Math.abs(Math.round(s.xw))} kt ${s.xw > 0 ? "R" : "L"}`,
+      windXStatus: xwAbs > 23 ? "limit" : xwAbs > 17 ? "caution" : "normal",
+      rwyLabel: this.rwyTag(i),
+
+      /* ---- 2nd segment tab ---- */
+      gradAtWeightText: this.dec(s.grad, 2),
+      /* RTOW sits exactly on this limit in Solve mode — only a real shortfall is red */
+      gradStatus: s.noSolution ? "normal" : s.grad < i.reqNet - 0.005 ? "limit" : "accent",
+      gradNote: `At ${F(s.weight)} kg`,
+      g6600Text: this.dec(s.g6600, 2),
+      g6600Hint: `${devLabel(Math.round(s.dev))} at ${F(s.paM)} m`,
+      g6600Status: s.g6600 < 0 ? "limit" : "normal",
+      kText: this.dec(s.k, 2), kHint: `Interpolated vs DA ${F(s.daFt)} ft`,
+      daText: F(s.daFt), daHint: `PA ${F(s.paFt)} ft · ${devLabel(Math.round(s.dev))}`,
+
+      gradSubtitle: `PA ${F(s.paFt)} ft · ${devLabel(Math.round(s.dev))} · flaps 18°`,
+      weightDomain: [4400, 6800], gradDomain: [-4, 10],
+      gradMarker: Number.isFinite(s.grad) && Number.isFinite(s.weight)
+        ? { x: Math.round(s.weight), y: Number(s.grad.toFixed(2)), label: `${this.dec(s.grad, 2)} %` }
+        : null,
+      gradSeries: [
+        { name: "NET OEI", emphasis: true, points: [4400, 5000, 5600, 6200, 6600].map((w) => [w, Number(s.gradAt(w).toFixed(2))]) },
+        { name: `REQ ${this.dec(i.reqNet, 2)}`, dashed: true, color: "var(--status-limit)", points: [[4400, i.reqNet], [6800, i.reqNet]] },
+      ],
+
+      /* ---- charts tab ---- */
+      curveSubtitle: `TODA ${F(i.toda)} m ÷ ${s.kS.toFixed(2)} · required net gradient ${this.dec(i.reqNet, 2)} % · flaps 18°`,
+      oatDomain: [-20, 50],
+      rtowMarker: { x: i.oat, y: Math.round(s.rtow), label: `${F(s.rtow)} kg` },
+      rtowSeries: pas.map((pa) => ({
+        name: pa === 0 ? "SL" : F(pa),
+        emphasis: Math.abs(pa - s.paFt) < 1100,
+        points: oats.map((t) => [t, Math.round(this.rtowFor({ ...i, elev: pa, qnh: 1013.25, oat: t }))]),
+      })),
+      paDomain: [0, 12000], todDomain: [0, 1800],
+      todMarker: { x: Math.round(s.paFt), y: Math.round(s.tod5400), label: `${F(s.tod5400)} m` },
+      /* Plotted from the digitised Fig. 5-16 carpet itself, not a 3x3 summary grid.
+         Constant-ISA-deviation lines are what the plate actually draws crossing the
+         pressure-altitude curves, so the chart reads the way the AFM page does. */
+      todSeries: [0, 20, 35].map((dv) => ({
+        name: devLabel(dv),
+        emphasis: Math.abs(dv - s.dev) < 8,
+        points: [0, 2000, 4000, 6000, 8000, 10000, 12000].map((pa) => {
+          const v = this.chartRead(pa, dv);
+          return v === null ? null : [pa, Math.round(v)];
+        }).filter(Boolean),
+      })),
+
+      /* ---- reads view ---- */
+      gradReadColumns: [{ key: "alt", header: "Aerodrome altitude" }].concat(
+        this.GRAD_DEVS.map((dv, c) => ({
+          key: "d" + c,
+          header: c === this.GRAD_DERIVED_COL ? `${devLabel(dv)} · derived` : devLabel(dv),
+          unit: "%", align: "right",
+        }))),
+      gradReadRows: this.GRAD_ALTS_M.map((a, r) => {
+        const row = { alt: a === 0 ? "0 m (SL)" : `${F(a)} m` };
+        this.GRAD_DEVS.forEach((dv, c) => { row["d" + c] = this.sgn(this.GRAD6600[r][c], 2); });
+        return row;
+      }),
+      gradReadSubtitle: "Base AFM Fig. 5-17 · % · still air · ISA, ISA+20 and ISA+35 columns read directly",
+      massReadColumns: [{ key: "cond", header: "Condition · 5 000 kg" }, { key: "g", header: "Net gradient", unit: "%", align: "right" }],
+      massReadRows: [
+        { cond: "SL, ISA", g: "+6.90" }, { cond: "SL, ISA−20", g: "+7.60" },
+        { cond: "3 000 m, ISA", g: "+3.65" }, { cond: "3 000 m, ISA−20", g: "+5.45" },
+        { cond: "3 000 m, ISA+35", g: "−0.80" },
+        { cond: "SL, ISA, 6 600 kg, 20 kt headwind", g: "+2.20" },
+      ],
+      /* Provenance cards, ENUMERATED FROM THE LOADED MODULES rather than written out
+         one card at a time. The hand-written version omitted a plate every time one was
+         added — first the whole Fig. 5-20 pair while ASD was already driving the answer,
+         then the Fig. 5-19 carpet, then the entire Fig. 5-13 / 5-14 TOR chain once it
+         became a binding candidate. The declaration below is the single place a new plate
+         gets registered, and each entry gates on its own module so it degrades to absent
+         rather than to a stale table. Purpose of the view: show WHICH AFM numbers
+         produced the answer on screen. */
+      provCards: (() => {
+        const kg = { label: "Weight", unit: "kg" }, kias = { label: "V1", unit: "KIAS" };
+        const pct = { label: "Slope", unit: "%" }, kt = { label: "Component", unit: "kt" };
+
+        /* ratio table: rows are the entry axis, columns are the carrier curves */
+        const byRow = (rowVals, unit, carriers, table, fmt) => ({
+          columns: [{ key: "k", header: unit.label, unit: unit.unit }].concat(
+            carriers.map((C, c) => ({ key: "c" + c, header: `${F(C)} m`, align: "right" }))),
+          rows: rowVals.map((rv, r) => {
+            const row = { k: fmt(rv) };
+            carriers.forEach((C, c) => {
+              const v = table[c] && table[c][r] != null ? table[c][r] : null;
+              row["c" + c] = v === null ? "—" : v.toFixed(3);
+            });
+            return row;
+          }),
+        });
+
+        /* carpet table: rows are pressure altitude, columns are ISA deviations. Read
+           through the module's own lookup so the displayed figure is the one the solver
+           would use, including its envelope handling. */
+        const DEVS = [-20, 0, 20, 35];
+        const carpet = (mod, read) => ({
+          columns: [{ key: "pa", header: "Pressure altitude" }].concat(
+            DEVS.map((dv, c) => ({ key: "d" + c, header: devLabel(dv), unit: "m", align: "right" }))),
+          rows: mod.ROWS.map((r) => {
+            const row = { pa: r.pa === 0 ? "0 ft (SL)" : `${F(r.pa)} ft` };
+            DEVS.forEach((dv, c) => {
+              const oat = 15 - 1.98 * (r.pa / 1000) + dv;
+              const lim = mod.maxOat(r.pa);
+              row["d" + c] = oat > lim + 0.25 ? "—" : F(Math.round(read(r.pa, Math.min(oat, lim))));
+            });
+            return row;
+          }),
+        });
+
+        const D13 = window.PG_FIG513, D14 = window.PG_FIG514, D16 = window.PG_FIG516;
+        const D17 = window.PG_FIG517, D18 = window.PG_FIG518;
+        const D19 = window.PG_FIG519, D20 = window.PG_FIG520;
+        const out = [];
+        const add = (ok, title, subtitle, build) => { if (ok) out.push({ title, subtitle, ...build() }); };
+
+        add(D13, "TOR required at 5 400 kg", "Supplement Fig. 5-13 · m · V1 84 reference · take-off run to lift-off",
+          () => carpet(D13, (p, o) => D13.torRequired(p, o).tor));
+        add(D16, "TOD required at 5 400 kg", "Supplement Fig. 5-16 · m · V1 84 reference · to 35 ft",
+          () => carpet(D16, (p, o) => D16.todRequired(p, o).tod));
+        add(D19, "ASD required at 5 400 kg", "Supplement Fig. 5-19 · m · V1 84 reference · accelerate-stop",
+          () => carpet(D19, (p, o) => D19.asdRequired(p, o).asd));
+
+        add(D14 && D14.weightPanelAvailable, "TOR weight correction",
+          "Supplement Fig. 5-14 left · ratio vs the 5 400 kg reference · by entry value",
+          () => byRow(D14.WEIGHT_KG, kg, D14.WEIGHT_CARRIER, D14.WEIGHT, (v) => F(v)));
+        add(D14, "TOR V1 correction", "Supplement Fig. 5-14 right · ratio vs the 84 KIAS reference · rises as V1 drops",
+          () => byRow(D14.V1_KIAS, kias, D14.V1_CARRIER, D14.V1, (v) => String(v)));
+
+        add(D17, "TOD weight correction", "Supplement Fig. 5-17 left · ratio vs the 5 400 kg reference · by entry value",
+          () => byRow(D17.WEIGHT_KG, kg, D17.WEIGHT_CARRIER, D17.WEIGHT, (v) => F(v)));
+        add(D17, "TOD V1 correction", "Supplement Fig. 5-17 right · ratio vs the 84 KIAS reference · rises as V1 drops",
+          () => byRow(D17.V1_KIAS, kias, D17.V1_CARRIER, D17.V1, (v) => String(v)));
+
+        add(D20, "ASD weight correction", "Supplement Fig. 5-20 left · ratio vs the 5 400 kg reference · by entry value",
+          () => byRow(D20.WEIGHT_KG, kg, D20.WEIGHT_CARRIER, D20.WEIGHT, (v) => F(v)));
+        add(D20, "ASD V1 correction", "Supplement Fig. 5-20 right · ratio vs the 84 KIAS reference · falls as V1 drops",
+          () => byRow(D20.V1_KIAS, kias, D20.V1_CARRIER, D20.V1, (v) => String(v)));
+
+        add(window.PG_FIG515, "TODA slope correction",
+          "Supplement Fig. 5-15 left · TODA ratio vs level · all 13 curves read · uphill reduces it",
+          () => byRow(window.PG_FIG515.SLOPE_PCT, pct, window.PG_FIG515.SLOPE_CARRIER, window.PG_FIG515.SLOPE, (v) => this.dec(v, 1)));
+        add(window.PG_FIG515 && window.PG_FIG515.windPanelAvailable, "TODA wind correction",
+          "Supplement Fig. 5-15 right · reported component · 50 % head, 150 % tail already applied",
+          () => byRow(window.PG_FIG515.WIND_KT, kt, window.PG_FIG515.WIND_CARRIER, window.PG_FIG515.WIND, (v) => this.sgn(v, 0)));
+        add(window.PG_FIG512, "TORA slope correction",
+          "Supplement Fig. 5-12 left · TORA ratio vs level · uphill reduces it — opposite sign to ASDA",
+          () => byRow(window.PG_FIG512.SLOPE_PCT, pct, window.PG_FIG512.SLOPE_CARRIER, window.PG_FIG512.SLOPE, (v) => this.dec(v, 1)));
+        add(window.PG_FIG512, "TORA wind correction",
+          "Supplement Fig. 5-12 right · reported component · 50 % head, 150 % tail already applied",
+          () => byRow(window.PG_FIG512.WIND_KT, kt, window.PG_FIG512.WIND_CARRIER, window.PG_FIG512.WIND, (v) => this.sgn(v, 0)));
+        add(D18, "ASDA slope correction", "Supplement Fig. 5-18 left · ASDA ratio vs level · sign reverses near 1 100 m",
+          () => byRow(D18.SLOPE_PCT, pct, D18.SLOPE_CARRIER, D18.SLOPE, (v) => this.dec(v, 1)));
+        add(D18, "ASDA wind correction", "Supplement Fig. 5-18 right · reported component · 50 % head, 150 % tail already applied",
+          () => byRow(D18.WIND_KT, kt, D18.WIND_CARRIER, D18.WIND, (v) => this.sgn(v, 0)));
+
+        return out;
+      })(),
+      dbSubtitle: this.state.db
+        ? `${dbCount} African aerodromes · ${this.state.db.AIRPORTS.reduce((n, a) => n + a.runways.length, 0)} runway records · OurAirports, not an AIP`
+        : "Loading",
+      /* Both tables in one view, because the interesting fact is where they DISAGREE —
+         Tab 5/II is harsher on contaminated paved surfaces but gentler on mud, and a
+         reader cross-checking the AFM needs to see both columns to trust either. */
+      surfColumns: [
+        { key: "s", header: "Type and condition" },
+        { key: "k", header: "5/I · TOR, TOD", align: "right" },
+        { key: "ka", header: "5/II · ASD", align: "right" },
+      ],
+      surfRows: Object.keys(this.SURF).map((key) => ({
+        s: key,
+        k: this.SURF[key].toFixed(2),
+        ka: (this.SURF_ASDA[key] ?? 1).toFixed(2),
+      })),
+      fixedColumns: [{ key: "v", header: "Value" }, { key: "src", header: "Source", align: "right" }],
+      /* The gap list is DERIVED FROM MODULE PRESENCE, never held as prose. Written out,
+         it went materially false: it still said Fig. 5-19 "cannot be traced", that V1 was
+         "not a solved speed", and that "the runway is not verified for an abort" — three
+         turns after the ASD chain went live and validated to ±1.5 %. Telling a pilot an
+         abort is unverified when it is computed is the most damaging direction to drift.
+         Each line now tests the thing it describes, so a chart going live deletes its own
+         gap and a module failing to load re-adds it. */
+      gapRows: (() => {
+        const g = [];
+        if (!window.PG_FIG516 || !window.PG_FIG519) {
+          g.push("The take-off and accelerate-stop base carpets are not loaded — no distance can be computed.");
+        }
+        /* TOR is now partly digitised, so this line has to distinguish three states
+           rather than claim the whole chain is missing. */
+        if (!window.PG_FIG513) {
+          g.push("Take-off run is not read. Supplement Figs. 5-13 and 5-14 are not digitised, so the TOR locus is absent — the answer is the lower of the TOD and ASD limits only.");
+        } else if (!window.PG_FIG514 || !window.PG_FIG514.weightPanelAvailable) {
+          g.push("Take-off run is partly read. The Fig. 5-13 carpet and the Fig. 5-14 V1 panel are digitised, but Fig. 5-14's weight panel is not, so the TOR locus is absent and the answer is the lower of the TOD and ASD limits only.");
+        }
+        /* Fig. 5-12, the TORA slope/wind plate, is genuinely still undigitised, so TORA
+           borrows Fig. 5-18 exactly as TODA does. Reported separately because the rest of
+           the TOR chain is complete and a reader would otherwise assume this was too.
+           Gaps list only, not a live caution — same rule as the TODA substitution. */
+        /* Surfaced only when TOR is the binding limit, because that is the only case
+           where Fig. 5-14's measured 3.5 % conservatism reaches the answer. TOR requires
+           less distance than TOD or ASD, so with equal declared distances it never binds
+           (0 of 100 swept cases); it needs TORA below about 70 % of TODA to bind at all,
+           and below about 50 % before it actually costs weight. */
+        if (s.fieldLimit && s.fieldLimit.kind === "TOR") {
+          g.push("TOR is the binding limit here, which is the one case where Fig. 5-14's measured bias reaches the result. Against the supplement's two published TOR pairs that panel reads 3.5 % light at V1 84 and 1.8 % at V1 73, so RTOW may be roughly 50–110 kg conservative here. That is the safe direction — it costs payload rather than creating risk. It is NOT applied as a correction: across all seven published pairs the mean error is −0.9 %, so this is one end of a scatter rather than a bias, and correcting it would degrade the TOD and ASD cases.");
+        }
+        if (!window.PG_FIG512 && window.PG_FIG513) {
+          g.push("TORA is corrected for slope and wind with the ASDA chart, supplement Fig. 5-18, because Fig. 5-12 is not digitised. That substitution carries the wrong sign for slope — uphill reduces TORAcor but increases ASDAcor on short runways.");
+        }
+        if (!window.PG_FIG515) {
+          g.push("TODA is corrected for slope and wind with the ASDA chart, supplement Fig. 5-18, because Fig. 5-15 is not digitised. On a short uphill runway that carries the wrong sign for slope.");
+        }
+        g.push("Weight accuracy against the AFM's published examples is a few percent, not the ±1 % that applies to the distance reads. Solving the supplement's own worked cases gives 5 881 kg against its published 5 800 kg on Fig. 5-17 (1.4 % heavy) and 5 983 kg against 6 200 kg on Fig. 5-14 (3.5 % light) — the two hand-plotted panels bracket their own published tables with no consistent bias, because each plate's example is itself drawn to a few percent. On Fig. 5-17 the example is provably inconsistent: its two corners lie on one curve to within 12 m while its entry horizontal sits 5 % below that curve, confirmed by decoding the PDF vectors and by re-reading the plate. The printed curves are used, since that is what a pilot reads. RTOW is indicative, not dispatchable.");
+        g.push(`Base AFM p. 10 makes V1 VARIABLE for flaps 18° — read from the graphs — while VR ${this.VR_SCHED} and V2 ${this.V2} are fixed. A single memorised V1 ${this.V1_SCHED} is therefore an operator simplification rather than the AFM method, and on a short field it is expensive: at PA 2 810 ft on 950 m it gives 4 542 kg where the balanced 77.5 gives 5 691 kg. On a long runway it costs nothing, which is presumably how the practice arose. Which V1 drives RTOW is selectable under Configuration — operator schedule ${this.V1_SCHED}, AFM best, or a manual value clamped to Vmcg ${this.VMCG}…VR ${this.VR_SCHED} — and the others stay displayed for comparison. AFM mode falls back to the schedule where V1 makes no difference. Adopting variable V1 operationally is an ops-manual and training decision, not one this app makes.`);
+        g.push("Flaps 0° uses a separate chart set, supplement Figs. 5-22 to 5-30, not read. The operations manual permits flaps 0° for ferry flights only.");
+        /* Derived, not written. The two coverage facts in this sentence are the same ones
+           fixedRows and placardRows read from the module, and holding them as prose here
+           put "−20 °C" on screen two cards from the derived "OAT plotted from −29 °C".
+           The cold bound is altitude-dependent — the pilot plotted ISA−20 ribs, so the
+           actual OAT floor runs −20 at sea level to −28.8 at 12 000 ft, and makeCarpet
+           gates extrapolation against each row's own first column — so it is stated as
+           the ISA line that was plotted plus its range, not as one scalar. */
+        const cc = window.PG_FIG516;
+        if (cc && cc.ROWS) {
+          const paMax = Math.max(...cc.ROWS.map((r) => r.pa));
+          const oats = cc.ROWS.map((r) => r.pts[0][0]);
+          const warm = oats[0], cold = Math.min(...oats);
+          g.push(`The carpets are plotted to ${F(paMax)} ft, and down to ISA−20 — an actual OAT floor of ${this.sgn(warm, 0)} °C at sea level falling to ${this.sgn(cold, 0)} °C at ${F(paMax)} ft. The 13 120 ft curve and the colder ribs were not read; entries beyond them report as extrapolated.`);
+        }
+        return g;
+      })(),
+      gapsTitle: window.PG_FIG513 ? "Known gaps and caveats" : "Known gaps — not yet included",
+      hasGaps: true,
+
+      /* Placards for the Aircraft limits view. These were hardcoded template rows and
+         drifted out of step with the derived Chart reads table — the limits view still
+         claimed a 13 120 ft ceiling after the carpets were pinned at 12 000, overstating
+         coverage in the prominent place. Both views read module-derived figures — which
+         is necessary but NOT sufficient: V1_MAX and V1_USE_MAX are both module-derived and
+         mean different things, and picking the wrong one is exactly how this subtitle
+         drifted again. Check the MEANING, not just that a constant was used. */
+      /* V1_USE_MAX, not V1_MAX. V1_MAX is the CHART AXIS constant and the app no longer
+         scans to it — the ceiling is VR, because a reject is impossible after rotation.
+         This subtitle still advertised "scanned 73…84" two cards from the Limits table
+         that correctly reads "V1 usable 73 … 81 · Capped at VR 81", which is the same
+         contradiction the user reported one turn earlier in the V1 rows. */
+      placardSubtitle: `Placards · flaps 18° · V1 usable ${this.V1_MIN}…${this.V1_USE_MAX}`,
+      placardRows: (() => {
+        const c = window.PG_FIG516;
+        const paMax = c && c.ROWS ? Math.max(...c.ROWS.map((r) => r.pa)) : null;
+        return [
+          { label: "VR · V2", value: `${this.VR_SCHED} · ${this.V2}`, unit: "KIAS", hint: "Base AFM p. 10 · fixed for flaps 18°", status: "normal", divider: true },
+          { label: "Vmca", value: String(this.VMCA), unit: "KIAS", hint: "Supplement p. 7 placard", status: "normal", divider: true },
+          { label: "Vmcg", value: String(this.VMCG), unit: "KIAS", hint: "Absolute V1 floor", status: "normal", divider: true },
+          /* The axis and the usable band are DIFFERENT FACTS and this card lists operating
+           limits, so it must carry both. It previously showed only "V1 band 73 … 84",
+           asserting 84 as usable next to a "Vmcg · absolute V1 floor" row — a floor with
+           no ceiling, and the wrong ceiling implied. Third site where V1_MAX was used
+           where V1_USE_MAX was meant. */
+        { label: "V1 chart axis", value: `${this.V1_MIN} … ${this.V1_MAX}`, unit: "KIAS", hint: "Fig. 5-17 / 5-20 axis extent", status: "normal", divider: true },
+        { label: "V1 usable", value: `${this.V1_MIN} … ${this.V1_USE_MAX}`, unit: "KIAS", hint: `Capped at VR ${this.VR_SCHED} — no reject after rotation`, status: "caution", divider: true },
+          { label: "MTOW", value: F(this.MTOW), unit: "kg", hint: "Structural", status: "normal", divider: true },
+          { label: "Max field pressure altitude", value: paMax ? F(paMax) : "—", unit: "ft",
+            hint: "Carpets digitised to here · 13 120 ft curve not plotted", status: "caution", divider: false },
+        ];
+      })(),
+
+      /* Same rule as the input hints: anything the chart modules know is read from them.
+         This table had drifted too — it advertised a 74…84 V1 band while the solver
+         scans from 73, and a 13 120 ft ceiling that only the undigitised top curve
+         reaches. A limits table that overstates coverage is the worst place to drift. */
+      fixedRows: (() => {
+        const c = window.PG_FIG516, w = window.PG_FIG518, t = window.PG_FIG517;
+        const paMax = c && c.ROWS ? Math.max(...c.ROWS.map((r) => r.pa)) : null;
+        const oatLo = c && c.ROWS ? Math.min(...c.ROWS.map((r) => r.pts[0][0])) : null;
+        return [
+          { v: `MTOW ${F(this.MTOW)} kg`, src: "Base AFM · chart ceiling" },
+          { v: `VR ${this.VR_SCHED} · V2 ${this.V2} KIAS (flaps 18°)`, src: "Base AFM p. 10 · fixed" },
+          { v: "Vmca 73 KIAS", src: "Supplement p. 7" },
+          { v: `Vmcg ${this.VMCG} KIAS`, src: "Base AFM · V1 floor" },
+          { v: `V1 chart axis ${this.V1_MIN} … ${this.V1_MAX} KIAS`, src: "Supplement Fig. 5-17 / 5-20" },
+          { v: `V1 usable ${this.V1_MIN} … ${this.V1_USE_MAX} KIAS`, src: `Capped at VR ${this.VR_SCHED} — no reject after rotation` },
+          { v: `Schedule V1 ${this.V1_SCHED} · VR ${this.VR_SCHED} · V2 ${this.V2} KIAS`, src: "Operator practice" },
+          { v: paMax ? `Carpets digitised to ${F(paMax)} ft PA` : "Carpets not loaded", src: "13 120 ft curve not plotted" },
+          { v: oatLo !== null ? `OAT plotted from ${this.sgn(oatLo, 0)} °C`  : "—", src: "Colder ribs not plotted" },
+          { v: w ? `Slope ${this.sgn(w.SLOPE_PCT[0], 0)} … ${this.sgn(w.SLOPE_PCT[w.SLOPE_PCT.length - 1], 0)} % · no extrapolation` : "—", src: "Fig. 5-18 · AFM p. 36" },
+          { v: w ? `Wind ${this.sgn(w.WIND_KT[0], 0)} … ${this.sgn(w.MAX_HEADWIND, 1)} kt component` : "—", src: "Fig. 5-18 · head clamped at 38.8" },
+          { v: t ? `Correction weights ${F(t.WEIGHT_KG[0])} … ${F(t.WEIGHT_KG[t.WEIGHT_KG.length - 1])} kg` : "—", src: "Fig. 5-17 / 5-20 axis" },
+          { v: `Charted climb weight ${F(this.WMIN)} … ${F(this.MTOW)} kg`, src: "WAT chart axis" },
+        ];
+      })(),
+
+      /* ---- history ---- */
+      historyCount: this.state.history.length
+        ? `${this.state.history.length} solution${this.state.history.length > 1 ? "s" : ""} recorded this session`
+        : "No solutions recorded yet — press Compute",
+      histColumns: [
+        { key: "time", header: "Time" }, { key: "icao", header: "ICAO" },
+        { key: "rwy", header: "RWY" }, { key: "cond", header: "Conditions" },
+        { key: "toda", header: "TODA", align: "right" }, { key: "flap", header: "Flap" },
+        { key: "rtow", header: "RTOW", unit: "kg", align: "right" }, { key: "lim", header: "Limit", align: "right" },
+      ],
+      histRows: this.state.history.length ? this.state.history
+        : [{ time: "—", icao: "—", rwy: "—", cond: "No computation recorded", toda: "—", flap: "—", rtow: "—", lim: "—" }],
+    };
+  }
+}
+
+</script>
+</body>
+</html>
